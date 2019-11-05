@@ -1,5 +1,5 @@
 # parameters
-ARG REPO_NAME="<REPO_NAME_HERE>"
+ARG REPO_NAME="thomas_dt_roscore"
 
 # ==================================================>
 # ==> Do not change this code
