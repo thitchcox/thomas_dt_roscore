@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<launch>
+    <!-- Basic args -->
+    <arg name="veh" default="$(env VEHICLE_NAME)"/>
+    <arg name="camera_topic" default="camera_node"/>
+
+    <arg name="param_file_name" default="default"/>
+    <arg name="visualization" default="true"/>
+    <arg name="ai_interval" default="5" doc="interval with which the linear trafo gets updated. color balance is performed every second."/>
+    <arg name="verbose" default="false"/>
+
+    <!-- Toggle project elements on and off -->
+    <arg name="IEKF_on" default="true"/>
+    <arg name="custom_control_on" default="false"/>
+
+
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+    <!-- Start FSM -->
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+    <!-- fsm_node -->
+    <include file="$(find fsm)/launch/fsm_node.launch">
+		<arg name="veh" value="$(arg veh)"/>
+		<arg name="param_file_name" value="$(arg param_file_name)"/>
+	</include>
+
+	<!-- car_cmd_switch_node -->
+	<remap from="car_cmd_switch_node/cmd_lane_following" to="lane_controller_node/lane_control"/>
+
+    <!-- logic_gate_node -->
+	<include file="$(find fsm)/launch/logic_gate_node.launch">
+		<arg name="veh" value="$(arg veh)"/>
+		<arg name="param_file_name" value="$(arg param_file_name)"/>
+	</include>
+    <!-- End FSM -->
+
+
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+    <!-- Start lane following -->
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->  
+    <!-- line_detector_node -->
+    <remap from="line_detector_node/transform" to="anti_instagram_node/transform"/>
+    <remap from="line_detector_node/fsm_mode" to="fsm_node/mode" />
+    <remap from="line_detector_node/corrected_image/compressed"
+    to="anti_instagram_node/corrected_image/compressed"/>
+    <include file="$(find line_detector)/launch/line_detector_node.launch">
+        <arg name="veh" value="$(arg veh)"/>
+        <arg name="param_file_name" value="$(arg param_file_name)"/>
+        <arg name="verbose" value="$(arg verbose)" />
+    </include>
+    
+    <!-- groung_projection_node -->
+    <remap from="~lineseglist_in" to="line_detector_node/segment_list"/>
+    <remap from="~cali_image" to="$(arg camera_topic)/image/raw"/>
+    <remap from="~camera_info" to="$(arg camera_topic)/camera_info"/>
+    <include file="$(find ground_projection)/launch/ground_projection.launch">
+        <arg name="veh" value="$(arg veh)"/>
+        <arg name="param_file_name" value="$(arg param_file_name)"/>
+    </include>
+    
+    <!-- duckiebot_visualizer -->
+    <remap from="duckiebot_visualizer/segment_list"
+    to="ground_projection/lineseglist_out"/>
+    <!-- TODO : Need a filter switch statement here -->
+    <!-- <group unless="$(arg IEKF_on)">
+        <remap from="duckiebot_visualizer/segment_list_filtered"
+        to="lane_filter_node/seglist_filtered"/>
+    </group> -->
+    <!-- <group if="$(arg IEKF_on)"> -->
+        <remap from="duckiebot_visualizer/segment_list_filtered"
+        to="dt_project_estimator_node/seglist_filtered"/>
+    <!-- </group> -->
+    <include file="$(find duckiebot_visualizer)/launch/duckiebot_visualizer.launch">
+        <arg name="veh" value="$(arg veh)" />
+    </include>
+       
+    <!-- DEFAULT lane_filter_node -->
+    <group unless="$(arg IEKF_on)">
+        <remap from="lane_filter_node/segment_list" to="ground_projection/lineseglist_out"/>
+		<remap from="lane_filter_node/car_cmd" to="car_cmd_switch_node/cmd"/>
+		<remap from="lane_filter_node/fsm_mode" to="fsm_node/mode"/>
+        <include file="$(find lane_filter)/launch/lane_filter_node.launch">
+                <arg name="veh" value="$(arg veh)"/>
+                <arg name="param_file_name" value="$(arg param_file_name)"/>
+        </include>
+	</group>
+
+    <!-- PROJECT lane_estimation_node -->
+    <group if="$(arg IEKF_on)">
+        <remap from="dt_project_estimator_node/segment_list" to="ground_projection/lineseglist_out"/>
+        <remap from="dt_project_estimator_node/car_cmd" to="car_cmd_switch_node/cmd"/>
+        <remap from="dt_project_estimator_node/fsm_mode" to="fsm_node/mode"/>
+        <include file="$(find dt_project_estimator)/launch/dt_project_estimator_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="param_file_name" value="default"/>
+        </include>
+    </group>
+
+    <!-- DEFAULT lane_controller_node -->
+	<group unless="$(arg custom_control_on)">
+        <!-- Remap to either default or project estimator -->
+        <!-- TODO : Need a filter switch statement here -->
+        <!-- <group unless="$(arg IEKF_on)"> -->
+            <!-- subscribe to lane_pose topic coming from default controller -->
+            <!-- <remap from="lane_controller_node/lane_pose" to="lane_filter_node/lane_pose"/> -->
+        <!-- </group> -->
+        <!-- <group if="$(arg IEKF_on)"> -->
+            <!-- subscribe to lane_pose topic coming from custom controller -->
+            <remap from="lane_controller_node/lane_pose" to="dt_project_estimator_node/lane_pose"/>
+        <!-- </group> -->
+
+		<remap from="lane_controller_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed" />
+		<remap from="lane_controller_node/fsm_mode" to="fsm_node/mode" />
+		<remap from="lane_controller_node/obstacle_avoidance_pose" to="obst_avoid/obstacle_avoidance_pose" />
+		<remap from="lane_controller_node/obstacle_detected" to="obstacle_avoidance_node/obstacle_avoidance_active_flag" />
+		<remap from="lane_controller_node/stop_line_reading" to="stop_line_filter_node/stop_line_reading" />
+		<remap from="wheels_driver_node/radius_limit" to="lane_controller_node/radius_limit" />
+        <include file="$(find lane_control)/launch/lane_controller_node.launch">
+			<arg name="veh" value="$(arg veh)"/>
+			<arg name="param_file_name" value="$(arg param_file_name)"/>
+		</include>
+	</group>
+
+    <!-- TODO : custom_controller_node here -->
+
+    <!-- lane_pose_visualization_node -->
+    <group if="$(arg visualization)">
+        <!-- TODO : Need a filter switch statement here -->
+        <!-- <group unless="$(arg IEKF_on)">
+            <remap from="lane_pose_visualizer_node/lane_pose"
+            to="lane_filter_node/lane_pose"/>
+        </group> -->
+        <!-- <group if="$(arg IEKF_on)"> -->
+            <remap from="lane_pose_visualizer_node/lane_pose"
+            to="dt_project_estimator_node/lane_pose"/>
+        <!-- </group> -->
+		<include file="$(find lane_filter)/launch/lane_pose_visualizer_node.launch">
+			<arg name="veh" value="$(arg veh)"/>
+		</include>
+	</group>
+
+    <!-- anti_instagram_node -->
+    <include file="$(find anti_instagram)/launch/anti_instagram_node.launch">
+        <arg name="veh" value="$(arg veh)"/>
+        <arg name="ai_interval" value="$(arg ai_interval)"/>
+    </include>
+    <!-- End lane following -->
+
+
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+    <!-- TODO  -->
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+    <!-- vehicle avoidance? -->
+    <!-- intersection navigation? -->
+
+</launch>
