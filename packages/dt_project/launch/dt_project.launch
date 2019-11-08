@@ -60,15 +60,12 @@
     <!-- duckiebot_visualizer -->
     <remap from="duckiebot_visualizer/segment_list"
     to="ground_projection/lineseglist_out"/>
-    <!-- TODO : Need a filter switch statement here -->
-    <!-- <group unless="$(arg IEKF_on)">
-        <remap from="duckiebot_visualizer/segment_list_filtered"
-        to="lane_filter_node/seglist_filtered"/>
-    </group> -->
-    <!-- <group if="$(arg IEKF_on)"> -->
-        <remap from="duckiebot_visualizer/segment_list_filtered"
-        to="dt_project_estimator_node/seglist_filtered"/>
-    <!-- </group> -->
+    <!-- Subscribe to the segment_list_filtered topic from both default and
+    project estimation nodes.  Only one will be on. -->
+    <remap from="duckiebot_visualizer/segment_list_filtered"
+    to="lane_filter_node/seglist_filtered"/>
+    <remap from="duckiebot_visualizer/segment_list_filtered"
+    to="dt_project_estimator_node/seglist_filtered"/>
     <include file="$(find duckiebot_visualizer)/launch/duckiebot_visualizer.launch">
         <arg name="veh" value="$(arg veh)" />
     </include>
@@ -97,17 +94,11 @@
 
     <!-- DEFAULT lane_controller_node -->
 	<group unless="$(arg custom_control_on)">
-        <!-- Remap to either default or project estimator -->
-        <!-- TODO : Need a filter switch statement here -->
-        <!-- <group unless="$(arg IEKF_on)"> -->
-            <!-- subscribe to lane_pose topic coming from default controller -->
-            <!-- <remap from="lane_controller_node/lane_pose" to="lane_filter_node/lane_pose"/> -->
-        <!-- </group> -->
-        <!-- <group if="$(arg IEKF_on)"> -->
-            <!-- subscribe to lane_pose topic coming from custom controller -->
-            <remap from="lane_controller_node/lane_pose" to="dt_project_estimator_node/lane_pose"/>
-        <!-- </group> -->
-
+        <!-- Subscribe to the lane_pose topic from both default and project
+        estimation nodes.  Only one will be on. -->
+        <remap from="lane_controller_node/lane_pose" to="lane_filter_node/lane_pose"/>
+        <remap from="lane_controller_node/lane_pose" to="dt_project_estimator_node/lane_pose"/>
+        <!-- Standard remaps -->
 		<remap from="lane_controller_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed" />
 		<remap from="lane_controller_node/fsm_mode" to="fsm_node/mode" />
 		<remap from="lane_controller_node/obstacle_avoidance_pose" to="obst_avoid/obstacle_avoidance_pose" />
@@ -124,15 +115,10 @@
 
     <!-- lane_pose_visualization_node -->
     <group if="$(arg visualization)">
-        <!-- TODO : Need a filter switch statement here -->
-        <!-- <group unless="$(arg IEKF_on)">
-            <remap from="lane_pose_visualizer_node/lane_pose"
-            to="lane_filter_node/lane_pose"/>
-        </group> -->
-        <!-- <group if="$(arg IEKF_on)"> -->
-            <remap from="lane_pose_visualizer_node/lane_pose"
-            to="dt_project_estimator_node/lane_pose"/>
-        <!-- </group> -->
+        <!-- Subscribe to the lane_pose topic from both default and project
+        estimation nodes.  Only one will be on. -->
+        <remap from="lane_pose_visualizer_node/lane_pose" to="lane_filter_node/lane_pose"/>
+        <remap from="lane_pose_visualizer_node/lane_pose" to="dt_project_estimator_node/lane_pose"/>
 		<include file="$(find lane_filter)/launch/lane_pose_visualizer_node.launch">
 			<arg name="veh" value="$(arg veh)"/>
 		</include>
