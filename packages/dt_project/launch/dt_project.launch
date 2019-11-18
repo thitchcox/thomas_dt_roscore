@@ -11,7 +11,7 @@
 
     <!-- Toggle project elements on and off -->
     <arg name="IEKF_on" default="true"/>
-    <arg name="custom_control_on" default="false"/>
+    <arg name="custom_control_on" default="true"/>
 
 
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
@@ -24,7 +24,9 @@
 	</include>
 
 	<!-- car_cmd_switch_node -->
+    <!-- TODO .... needs to be modified depending on which controller is active.-->
 	<remap from="car_cmd_switch_node/cmd_lane_following" to="lane_controller_node/lane_control"/>
+
 
     <!-- logic_gate_node -->
 	<include file="$(find fsm)/launch/logic_gate_node.launch">
@@ -81,7 +83,12 @@
         </include>
 	</group>
 
+
+
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <!-- PROJECT lane_estimation_node -->
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+    <!-- TODO need to read the right car_cmd info depending on which node is active.-->
     <group if="$(arg IEKF_on)">
         <remap from="dt_project_estimator_node/segment_list" to="ground_projection/lineseglist_out"/>
         <remap from="dt_project_estimator_node/car_cmd" to="car_cmd_switch_node/cmd"/>
@@ -91,6 +98,10 @@
             <arg name="param_file_name" value="default"/>
         </include>
     </group>
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+
+
+
 
     <!-- DEFAULT lane_controller_node -->
 	<group unless="$(arg custom_control_on)">
@@ -111,7 +122,28 @@
 		</include>
 	</group>
 
-    <!-- TODO : custom_controller_node here -->
+
+
+
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+	<!-- PROJECT controller -->
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+	<group if="$(arg custom_control_on)">
+        <!-- Subscribe to the lane_pose topic from both default and project
+        estimation nodes.  Only one will be on. -->
+		<remap from="custom_control_node/lane_pose" to="lane_filter_node/lane_pose"/> 
+		<remap from="custom_control_node/lane_pose" to="dt_project_estimator_node/lane_pose"/> 
+		<remap from="custom_control_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed" />
+		<include file="$(find custom_control_pkg)/launch/custom_control_node.launch">
+			<arg name="veh" value="$(arg veh)"/>
+			<arg name="param_file_name" value="$(arg param_file_name)"/>
+		</include>
+
+        <remap from="switch_node/car_cmd" to="custom_control_node/car_cmd" /> <!-- Manually override car_cmd topic-->
+	</group>
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+
+
 
     <!-- lane_pose_visualization_node -->
     <group if="$(arg visualization)">
