@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>dt_project_lane_point_filter</name>
+  <name>dt_project_lane_detector</name>
   <version>1.0.0</version>
   <description>TODO: Add a description of package `line_detector` in `package.xml`.</description>
 

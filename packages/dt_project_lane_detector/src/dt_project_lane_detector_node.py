@@ -8,20 +8,20 @@ from geometry_msgs.msg import Point
 from sensor_msgs.msg import CompressedImage, Image
 from visualization_msgs.msg import Marker
 
-from dt_project_lane_point_filter.timekeeper import TimeKeeper
+from dt_project_lane_detector.timekeeper import TimeKeeper
 import cv2
 import rospy
 import threading
 import time
-# from line_detector.line_detector_plot import color_segment, drawLines
+from dt_project_lane_detector.line_detector_plot import color_segment, drawLines
 import numpy as np
 
 
-class LanePointFilter(object):
+class LineDetectorNode(object):
     def __init__(self):
-        self.node_name = "LanePointFilterNode"
+        self.node_name = "LineDetectorNode"
 
-        # Constructor of lane point detector
+        # Constructor of line detector
         self.bridge = CvBridge()
 
         self.active = True
@@ -42,6 +42,7 @@ class LanePointFilter(object):
         self.detector_intersection = None
         self.detector_used = self.detector
 
+
         self.verbose = None
         self.updateParams(None)
 
@@ -49,7 +50,7 @@ class LanePointFilter(object):
 
         # Publishers
         self.pub_lines = rospy.Publisher("~segment_list", SegmentList, queue_size=1)
-        self.pub_image = rospy.Publisher("~image_with_points", Image, queue_size=1)
+        self.pub_image = rospy.Publisher("~image_with_lines", Image, queue_size=1)
 
         # Subscribers
         self.sub_image = rospy.Subscriber("~corrected_image/compressed", CompressedImage, self.processImage, queue_size=1)
@@ -84,17 +85,22 @@ class LanePointFilter(object):
             c = rospy.get_param('~detector')
             assert isinstance(c, list) and len(c) == 2, c
 
+#         if str(self.detector_config) != str(c):
             self.loginfo('new detector config: %s' % str(c))
+
             self.detector = instantiate(c[0], c[1])
+#             self.detector_config = c
             self.detector_used = self.detector
 
         if self.detector_intersection is None:
             c = rospy.get_param('~detector_intersection')
             assert isinstance(c, list) and len(c) == 2, c
 
+#         if str(self.detector_config) != str(c):
             self.loginfo('new detector_intersection config: %s' % str(c))
 
             self.detector_intersection = instantiate(c[0], c[1])
+#             self.detector_config = c
 
         if self.verbose and self.pub_edge is None:
             self.pub_edge = rospy.Publisher("~edge", Image, queue_size=1)
@@ -149,7 +155,9 @@ class LanePointFilter(object):
 
         # Resize and crop image
         hei_original, wid_original = image_cv.shape[0:2]
+
         if self.image_size[0] != hei_original or self.image_size[1] != wid_original:
+            # image_cv = cv2.GaussianBlur(image_cv, (5,5), 2)
             image_cv = cv2.resize(image_cv, (self.image_size[1], self.image_size[0]),
                                    interpolation=cv2.INTER_NEAREST)
         image_cv = image_cv[self.top_cutoff:,:,:]

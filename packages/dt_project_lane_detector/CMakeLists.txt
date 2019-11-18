@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(dt_project_lane_point_filter)
+project(dt_project_lane_detector)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
