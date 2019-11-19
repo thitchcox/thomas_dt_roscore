@@ -31,8 +31,8 @@ src = cv2.imread('frame0003.jpg')
 # choice = "orb_gray"
 # choice = "orb_only_yellow"
 # choice = "orb_only_white"
-choice = "gf2t_gray" 
-# choice = "gf2t_only_yellow" 
+# choice = "gf2t_yellow" 
+choice = "gf2t_white" 
 
 ################################################
 
@@ -97,41 +97,36 @@ if choice == "orb" or choice == "orb_gray" or choice == "orb_only_yellow" or \
         orb_xy[lv1, :] = [kps_orb[lv1].pt[0], kps_orb[lv1].pt[1]]
 
 # TRY : Good features to track
-if choice == "gf2t_gray" or choice == "gf2t_only_yellow" or \
-    choice == "gf2t_only_white":
-    max_corners = 50
-    quality_level = 0.01
-    min_distance = 5
-    block_size = 7
-    if choice == "gf2t_gray":
+if choice == "gf2t_yellow" or choice == "gf2t_white":
+    # Detecting yellow points
+    if choice == "gf2t_yellow":
+        max_corners = 50
+        quality_level = 0.01
+        min_distance = 5
+        block_size = 7
         corner_xy = cv2.goodFeaturesToTrack(gray_cropped_smoothed, max_corners, quality_level, min_distance, mask=cropped_yellow_mask, \
             blockSize=block_size, useHarrisDetector=0, k=0.04)
 
-    if choice == "gf2t_only_yellow":
-        corner_xy = cv2.goodFeaturesToTrack(cropped_yellow_mask, max_corners, quality_level, min_distance, blockSize=block_size, useHarrisDetector=1, k=0.04)
-
-    # Reset parameters for identifying white points
-    max_corners = 50
-    quality_level = 0.001
-    min_distance = 10
-    block_size = 15
-    if choice == "gf2t_gray":
+    # Detecting white points
+    if choice == "gf2t_white":
+        max_corners = 50
+        quality_level = 0.001
+        min_distance = 10
+        block_size = 15
         corner_xy = cv2.goodFeaturesToTrack(gray_cropped_smoothed, max_corners, quality_level, min_distance, mask=cropped_white_mask, \
             blockSize=block_size, useHarrisDetector=0, k=0.04)
-
-    # Show corners on greyscale image
-    dts = gray_cropped_smoothed.copy()
+    
+    # Show corners on source image
+    dts = src_cropped.copy()
     corner_xy = np.int0(corner_xy)
     for lv1 in corner_xy:
         x,y = lv1.ravel()
-        cv2.circle(dts, (x,y), 3, 0, -1)
-
-time_end = time.time()
-
-print("Execution time is", time_end - time_start)
+        cv2.circle(dts, (x,y), 3, 255, -1)
 
 # Printing and debugging.
-print(corner_xy)
+time_end = time.time()
+print("Execution time is", time_end - time_start)
+print("List of detected corners", corner_xy)
 
-# Print the image
+# Write the image to file
 cv2.imwrite('output.jpg', dts)
