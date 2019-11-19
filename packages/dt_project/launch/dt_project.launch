@@ -10,12 +10,13 @@
     <arg name="ai_interval" default="5" doc="interval with which the linear trafo gets updated. color balance is performed every second."/>
     <arg name="verbose" default="false"/>
 
+
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <!-- TOGGLE PROJECT ELEMENTS ON AND OFF -->
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
-    <arg name="IEKF_on" default="false"/>
-    <arg name="custom_control_on" default="false"/>
-    <arg name="custom_image_processing_on" default="true"/>
+    <arg name="IEKF_on" default="true"/>
+    <arg name="custom_control_on" default="true"/>
+    <arg name="custom_image_processing_on" default="false"/>
 
 
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
@@ -36,6 +37,7 @@
     <remap unless="$(arg custom_control_on)"
         from="car_cmd_switch_node/cmd_lane_following"
         to="lane_controller_node/lane_control"/>
+
 
     <!-- logic_gate_node -->
 	<include file="$(find fsm)/launch/logic_gate_node.launch">
@@ -114,7 +116,11 @@
         </include>
 	</group>
 
+
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <!-- PROJECT lane_estimation_node -->
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+    <!-- TODO need to read the right car_cmd info depending on which node is active.-->
     <group if="$(arg IEKF_on)">
         <remap from="dt_project_estimator_node/segment_list" to="ground_projection/lineseglist_out"/>
         <remap from="dt_project_estimator_node/car_cmd" to="car_cmd_switch_node/cmd"/>
@@ -124,6 +130,8 @@
             <arg name="param_file_name" value="default"/>
         </include>
     </group>
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+
 
     <!-- DEFAULT lane_controller_node -->
 	<group unless="$(arg custom_control_on)">
@@ -146,7 +154,28 @@
 		</include>
 	</group>
 
-    <!-- TODO : custom_controller_node here -->
+
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+	<!-- PROJECT controller -->
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+	<group if="$(arg custom_control_on)">
+         <!-- Subscribe to either the lane pose coming from lane_filter_node
+        (default) or dt_project_estimator_node (project) -->
+		<remap if="$(arg IEKF_on)" from="custom_control_node/lane_pose" 
+            to="dt_project_estimator_node/lane_pose"/>
+		<remap unless="$(arg IEKF_on)" from="custom_control_node/lane_pose"
+            to="lane_filter_node/lane_pose"/>        
+        <!-- Standard remaps -->
+		<remap from="custom_control_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed" />
+		<include file="$(find custom_control_pkg)/launch/custom_control_node.launch">
+			<arg name="veh" value="$(arg veh)"/>
+			<arg name="param_file_name" value="$(arg param_file_name)"/>
+		</include>
+        <!-- Manually override car_cmd topic-->
+        <remap from="switch_node/car_cmd" to="custom_control_node/car_cmd" /> 
+	</group>
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+
 
     <!-- lane_pose_visualization_node -->
     <group if="$(arg visualization)">
