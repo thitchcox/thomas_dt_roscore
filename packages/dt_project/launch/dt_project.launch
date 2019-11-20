@@ -5,13 +5,18 @@
     <arg name="camera_topic" default="camera_node"/>
 
     <arg name="param_file_name" default="default"/>
+    <arg name="project_param_file_name" default="dt_project"/>
     <arg name="visualization" default="true"/>
     <arg name="ai_interval" default="5" doc="interval with which the linear trafo gets updated. color balance is performed every second."/>
     <arg name="verbose" default="false"/>
 
-    <!-- Toggle project elements on and off -->
+
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+    <!-- TOGGLE PROJECT ELEMENTS ON AND OFF -->
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <arg name="IEKF_on" default="true"/>
     <arg name="custom_control_on" default="true"/>
+    <arg name="custom_image_processing_on" default="false"/>
 
 
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
@@ -24,8 +29,14 @@
 	</include>
 
 	<!-- car_cmd_switch_node -->
-    <!-- TODO .... needs to be modified depending on which controller is active.-->
-	<remap from="car_cmd_switch_node/cmd_lane_following" to="lane_controller_node/lane_control"/>
+    <!-- Subscribe to either the car_cmd coming from lane_controller_node
+    (default) or dt_project_lane_controller_node (project) -->
+	<remap if="$(arg custom_control_on)"
+        from="car_cmd_switch_node/cmd_lane_following"
+        to="dt_project_lane_controller_node/lane_control"/>
+    <remap unless="$(arg custom_control_on)"
+        from="car_cmd_switch_node/cmd_lane_following"
+        to="lane_controller_node/lane_control"/>
 
 
     <!-- logic_gate_node -->
@@ -39,19 +50,41 @@
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <!-- Start lane following -->
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->  
-    <!-- line_detector_node -->
-    <remap from="line_detector_node/transform" to="anti_instagram_node/transform"/>
-    <remap from="line_detector_node/fsm_mode" to="fsm_node/mode" />
-    <remap from="line_detector_node/corrected_image/compressed"
-    to="anti_instagram_node/corrected_image/compressed"/>
-    <include file="$(find line_detector)/launch/line_detector_node.launch">
-        <arg name="veh" value="$(arg veh)"/>
-        <arg name="param_file_name" value="$(arg param_file_name)"/>
-        <arg name="verbose" value="$(arg verbose)" />
-    </include>
+    <!-- Image processing: DEFAULT line_detector_node -->
+    <group unless="$(arg custom_image_processing_on)">
+        <remap from="line_detector_node/transform" to="anti_instagram_node/transform"/>
+        <remap from="line_detector_node/fsm_mode" to="fsm_node/mode" />
+        <remap from="line_detector_node/corrected_image/compressed"
+        to="anti_instagram_node/corrected_image/compressed"/>
+        <include file="$(find line_detector)/launch/line_detector_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="verbose" value="$(arg verbose)" />
+            <arg name="param_file_name" value="$(arg param_file_name)"/>
+        </include>
+    </group>
+
+    <!-- Image processing: PROJECT lane_detector_node -->
+    <group if="$(arg custom_image_processing_on)">
+        <remap from="dt_project_lane_detector_node/transform" to="anti_instagram_node/transform"/>
+        <remap from="dt_project_lane_detector_node/fsm_mode" to="fsm_node/mode" />
+        <remap from="dt_project_lane_detector_node/corrected_image/compressed"
+        to="anti_instagram_node/corrected_image/compressed"/>
+        <include file="$(find dt_project_lane_detector)/launch/dt_project_lane_detector_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="verbose" value="$(arg verbose)" />
+            <!-- Note: uses custom config file -->
+            <arg name="param_file_name" value="$(arg project_param_file_name)"/>
+        </include>
+    </group>
     
-    <!-- groung_projection_node -->
-    <remap from="~lineseglist_in" to="line_detector_node/segment_list"/>
+    <!-- ground_projection_node -->
+    <!-- Subscribe to either the segment list coming from line_detector_node
+    (default) or dt_project_lane_detector_node (project) -->
+    <remap if="$(arg custom_image_processing_on)" from="~lineseglist_in"
+        to="dt_project_lane_detector_node/segment_list"/>
+    <remap unless="$(arg custom_image_processing_on)" from="~lineseglist_in"
+        to="line_detector_node/segment_list"/>
+    <!-- Standard remaps -->
     <remap from="~cali_image" to="$(arg camera_topic)/image/raw"/>
     <remap from="~camera_info" to="$(arg camera_topic)/camera_info"/>
     <include file="$(find ground_projection)/launch/ground_projection.launch">
@@ -62,12 +95,12 @@
     <!-- duckiebot_visualizer -->
     <remap from="duckiebot_visualizer/segment_list"
     to="ground_projection/lineseglist_out"/>
-    <!-- Subscribe to the segment_list_filtered topic from both default and
-    project estimation nodes.  Only one will be on. -->
-    <remap from="duckiebot_visualizer/segment_list_filtered"
-    to="lane_filter_node/seglist_filtered"/>
-    <remap from="duckiebot_visualizer/segment_list_filtered"
-    to="dt_project_estimator_node/seglist_filtered"/>
+    <!-- Subscribe to either the lane pose coming from lane_filter_node
+    (default) or dt_project_estimator_node (project) -->
+    <remap if="$(arg IEKF_on)" from="duckiebot_visualizer/segment_list_filtered"
+        to="dt_project_estimator_node/seglist_filtered"/>
+    <remap unless="$(arg IEKF_on)" from="duckiebot_visualizer/segment_list_filtered"
+        to="lane_filter_node/seglist_filtered"/>
     <include file="$(find duckiebot_visualizer)/launch/duckiebot_visualizer.launch">
         <arg name="veh" value="$(arg veh)" />
     </include>
@@ -82,7 +115,6 @@
                 <arg name="param_file_name" value="$(arg param_file_name)"/>
         </include>
 	</group>
-
 
 
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
@@ -101,14 +133,14 @@
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
 
 
-
-
     <!-- DEFAULT lane_controller_node -->
 	<group unless="$(arg custom_control_on)">
-        <!-- Subscribe to the lane_pose topic from both default and project
-        estimation nodes.  Only one will be on. -->
-        <remap from="lane_controller_node/lane_pose" to="lane_filter_node/lane_pose"/>
-        <remap from="lane_controller_node/lane_pose" to="dt_project_estimator_node/lane_pose"/>
+        <!-- Subscribe to either the lane pose coming from lane_filter_node
+        (default) or dt_project_estimator_node (project) -->
+        <remap if="$(arg IEKF_on)" from="lane_controller_node/lane_pose"
+            to="dt_project_estimator_node/lane_pose"/>
+        <remap unless="$(arg IEKF_on)" from="lane_controller_node/lane_pose" 
+            to="lane_filter_node/lane_pose"/>        
         <!-- Standard remaps -->
 		<remap from="lane_controller_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed" />
 		<remap from="lane_controller_node/fsm_mode" to="fsm_node/mode" />
@@ -123,34 +155,36 @@
 	</group>
 
 
-
-
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
 	<!-- PROJECT controller -->
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
 	<group if="$(arg custom_control_on)">
-        <!-- Subscribe to the lane_pose topic from both default and project
-        estimation nodes.  Only one will be on. -->
-		<remap from="custom_control_node/lane_pose" to="lane_filter_node/lane_pose"/> 
-		<remap from="custom_control_node/lane_pose" to="dt_project_estimator_node/lane_pose"/> 
+         <!-- Subscribe to either the lane pose coming from lane_filter_node
+        (default) or dt_project_estimator_node (project) -->
+		<remap if="$(arg IEKF_on)" from="custom_control_node/lane_pose" 
+            to="dt_project_estimator_node/lane_pose"/>
+		<remap unless="$(arg IEKF_on)" from="custom_control_node/lane_pose"
+            to="lane_filter_node/lane_pose"/>        
+        <!-- Standard remaps -->
 		<remap from="custom_control_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed" />
 		<include file="$(find custom_control_pkg)/launch/custom_control_node.launch">
 			<arg name="veh" value="$(arg veh)"/>
 			<arg name="param_file_name" value="$(arg param_file_name)"/>
 		</include>
-
-        <remap from="switch_node/car_cmd" to="custom_control_node/car_cmd" /> <!-- Manually override car_cmd topic-->
+        <!-- Manually override car_cmd topic-->
+        <remap from="switch_node/car_cmd" to="custom_control_node/car_cmd" /> 
 	</group>
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
 
 
-
     <!-- lane_pose_visualization_node -->
     <group if="$(arg visualization)">
-        <!-- Subscribe to the lane_pose topic from both default and project
-        estimation nodes.  Only one will be on. -->
-        <remap from="lane_pose_visualizer_node/lane_pose" to="lane_filter_node/lane_pose"/>
-        <remap from="lane_pose_visualizer_node/lane_pose" to="dt_project_estimator_node/lane_pose"/>
+        <!-- Subscribe to either the lane pose coming from lane_filter_node
+        (default) or dt_project_estimator_node (project) -->
+        <remap if="$(arg IEKF_on)" from="lane_pose_visualizer_node/lane_pose"
+            to="dt_project_estimator_node/lane_pose"/>
+        <remap unless="$(arg IEKF_on)" from="lane_pose_visualizer_node/lane_pose"
+            to="lane_filter_node/lane_pose"/>
 		<include file="$(find lane_filter)/launch/lane_pose_visualizer_node.launch">
 			<arg name="veh" value="$(arg veh)"/>
 		</include>
