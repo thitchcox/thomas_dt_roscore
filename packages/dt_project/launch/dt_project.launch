@@ -28,17 +28,6 @@
 		<arg name="param_file_name" value="$(arg param_file_name)"/>
 	</include>
 
-	<!-- car_cmd_switch_node -->
-    <!-- Subscribe to either the car_cmd coming from lane_controller_node
-    (default) or dt_project_lane_controller_node (project) -->
-	<remap if="$(arg custom_control_on)"
-        from="car_cmd_switch_node/cmd_lane_following"
-        to="dt_project_lane_controller_node/lane_control"/>
-    <remap unless="$(arg custom_control_on)"
-        from="car_cmd_switch_node/cmd_lane_following"
-        to="lane_controller_node/lane_control"/>
-
-
     <!-- logic_gate_node -->
 	<include file="$(find fsm)/launch/logic_gate_node.launch">
 		<arg name="veh" value="$(arg veh)"/>
