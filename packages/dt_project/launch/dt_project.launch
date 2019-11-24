@@ -167,6 +167,7 @@
             to="lane_filter_node/lane_pose"/>        
         <!-- Standard remaps -->
 		<remap from="custom_control_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed" />
+        <remap from="custom_control_node/fsm_mode" to="fsm_node/mode"/>
 		<include file="$(find custom_control_pkg)/launch/custom_control_node.launch">
 			<arg name="veh" value="$(arg veh)"/>
 			<arg name="param_file_name" value="$(arg param_file_name)"/>
