@@ -136,12 +136,13 @@ class custom_control(object):
         # Print stuff
         #print(self.theta)
         #print(self.x_reference)
+        """
         print(T)
         print(self.x)
         print(self.fsm_state)
         print(self.errorInt)
         print("Angular Velocity: %.2f" % u," d: %.2f" % d, " phi: %.2f" % phi," v_bar: %.2f" % v_bar) 
-
+        """
 
 
     
