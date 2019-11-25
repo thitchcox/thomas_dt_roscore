@@ -84,13 +84,18 @@ class LanePointDetector(dtu.Configurable, LineDetectorInterface):
             min_distance, mask=mask, blockSize=block_size)
         if kps is None:
             kps = []
-        return kps
+        # Squeeze to 2D array to get rid of extra brace
+        return np.squeeze(kps)
 
     def _fakeReturns(self, kps):
         # Fake the data needed by the segment list
-        lines = np.zeros((len(kps), 4))
+        # Store the keypoints as the FIRST endpoint of the line
+        # Offset original kp by a smal (pixel) amount to form second endpoint
+        lines = np.hstack((kps, kps - 0.01))
+        # Store normals as a bunch of zeros
         normals = np.zeros((len(kps), 2))
-        centres = kps
+        # Store centres as a bunch of zeros
+        centres = np.zeros((len(kps), 2))
         return lines, normals, centres
 
     def detectLines(self, color):
