@@ -8,14 +8,14 @@
     <arg name="project_param_file_name" default="dt_project"/>
     <arg name="visualization" default="true"/>
     <arg name="ai_interval" default="5" doc="interval with which the linear trafo gets updated. color balance is performed every second."/>
-    <arg name="verbose" default="false"/>
+    <arg name="verbose" default="true"/>
 
 
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <!-- TOGGLE PROJECT ELEMENTS ON AND OFF -->
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <arg name="IEKF_on" default="false"/>
-    <arg name="custom_control_on" default="false"/>
+    <arg name="custom_control_on" default="true"/>
     <arg name="custom_image_processing_on" default="true"/>
     <arg name="simple_estimator_on" default="true"/>
 
@@ -176,8 +176,11 @@
         (default) or dt_project_estimator_node (project) -->
 		<remap if="$(arg IEKF_on)" from="custom_control_node/lane_pose" 
             to="dt_project_estimator_node/lane_pose"/>
-		<remap unless="$(arg IEKF_on)" from="custom_control_node/lane_pose"
-            to="lane_filter_node/lane_pose"/>        
+		<!-- <remap unless="$(arg IEKF_on)" from="custom_control_node/lane_pose"
+            to="lane_filter_node/lane_pose"/> -->       
+        <remap if="$(arg simple_estimator_on)" from="custom_control_node/lane_pose" 
+            to="simple_estimator_node/lane_pose"/>
+
         <!-- Standard remaps -->
 		<remap from="custom_control_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed" />
         <remap from="custom_control_node/fsm_mode" to="fsm_node/mode"/>
