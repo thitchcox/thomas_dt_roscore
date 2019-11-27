@@ -14,9 +14,14 @@ config_lane_gp;
 % load('aligned_straight.mat')
 % load('offset_straight.mat')
 % load('aligned_curve_right.mat')
-load('offset_curve_right.mat')
+% load('offset_curve_right.mat')
 % load('aligned_curve_left.mat')
 % load('offset_curve_left.mat')
+
+% Real data
+% [x_white, x_yellow, y_white, y_yellow] = loadRealData('dt_straight_aligned');
+[x_white, x_yellow, y_white, y_yellow] = loadRealData('dt_left_curve');
+
 
 % Choose whether to optimize gp hyperparameters
 tf_optimize_hyperparameters = false;

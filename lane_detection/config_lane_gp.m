@@ -30,7 +30,7 @@ line_width = 2;
 
 %% Access stuff
 % Access data
-addpath('data')
+addpath(genpath('data'))
 
 % Access colours
 matlab_yellow = matlabColors('yellow');

@@ -100,6 +100,44 @@ class DTProjectEstimatorNode(object):
             self.curvature_res = rospy.get_param('~curvature_res')
             self.filter.updateRangeArray(self.curvature_res)
 
+        # Step 0.5: Print segments to screen
+        # First count the number of each segment
+        n_white = 0
+        n_yellow = 0
+        for segment in segment_list_msg.segments:
+            if segment.color == 0:
+                n_white = n_white + 1
+            elif segment.color == 1:
+                n_yellow = n_yellow + 1
+            else:
+                print("Unrecognized segment color")
+
+        print("Number white segments received: ", n_white)
+        print("Number yellow segments received: ", n_yellow)
+
+        # Instantiate objects
+        segs_white = np.zeros((n_white, 2))
+        segs_yellow = np.zeros((n_yellow, 2))
+
+        # Pull out points
+        idx_white = 0
+        idx_yellow = 0
+        for segment in segment_list_msg.segments:
+            if segment.color == 0:
+                segs_white[idx_white, :] = [segment.points[0].x, segment.points[0].y]
+                idx_white = idx_white + 1
+            elif segment.color == 1:
+                segs_yellow[idx_yellow, :] = [segment.points[0].x, segment.points[0].y]
+                idx_yellow = idx_yellow + 1
+            else:
+                print("Unrecognized segment color")
+
+        # Print results to screen
+        # print("Number white segments: ", n_white)
+        # print("Number yellow segments: ", n_yellow)
+        # print("White segments: ", segs_white)
+        # print("Yellow segments: ", segs_yellow)
+        
         # Step 1: predict
         current_time = rospy.get_time()
         dt = current_time - self.t_last_update
