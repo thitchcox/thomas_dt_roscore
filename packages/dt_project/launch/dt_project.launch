@@ -14,7 +14,7 @@
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <!-- TOGGLE PROJECT ELEMENTS ON AND OFF -->
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
-    <arg name="IEKF_on" default="false"/>
+    <arg name="IEKF_on" default="true"/>
     <arg name="custom_control_on" default="false"/>
     <arg name="custom_image_processing_on" default="true"/>
 

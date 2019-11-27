@@ -8,6 +8,9 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Float32, String
 import json
 
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
+
 class DTProjectEstimatorNode(object):
 
     def __init__(self):
@@ -90,7 +93,6 @@ class DTProjectEstimatorNode(object):
         # Get actual timestamp for latency measurement
         timestamp_now = rospy.Time.now()
 
-
         if not self.active:
             return
 
@@ -100,44 +102,56 @@ class DTProjectEstimatorNode(object):
             self.curvature_res = rospy.get_param('~curvature_res')
             self.filter.updateRangeArray(self.curvature_res)
 
-        # Step 0.5: Print segments to screen
-        # First count the number of each segment
-        n_white = 0
-        n_yellow = 0
+        # Step 1: Generate an xy list from the data
+        white_xy = []
+        yellow_xy = []
         for segment in segment_list_msg.segments:
+            # White points
             if segment.color == 0:
-                n_white = n_white + 1
+                white_xy.append([segment.points[0].x, segment.points[0].y])
+            # Yellow points
             elif segment.color == 1:
-                n_yellow = n_yellow + 1
+                yellow_xy.append([segment.points[0].x, segment.points[0].y])
             else:
                 print("Unrecognized segment color")
 
-        print("Number white segments received: ", n_white)
-        print("Number yellow segments received: ", n_yellow)
+        # Turn into numpy arrays
+        white_xy = np.array(white_xy)
+        yellow_xy = np.array(yellow_xy)
 
-        # Instantiate objects
-        segs_white = np.zeros((n_white, 2))
-        segs_yellow = np.zeros((n_yellow, 2))
+        # print("original: ", white_xy[:,0])
+        # print("modified: ", white_xy[:,0].reshape(-1,1))
 
-        # Pull out points
-        idx_white = 0
-        idx_yellow = 0
-        for segment in segment_list_msg.segments:
-            if segment.color == 0:
-                segs_white[idx_white, :] = [segment.points[0].x, segment.points[0].y]
-                idx_white = idx_white + 1
-            elif segment.color == 1:
-                segs_yellow[idx_yellow, :] = [segment.points[0].x, segment.points[0].y]
-                idx_yellow = idx_yellow + 1
-            else:
-                print("Unrecognized segment color")
+        # Train a GP for each set of points.
+        # White points
+        kernel = C(1.0, (1e-3, 1e3)) * RBF(5, 1.0)
+        gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=15)
+        gp.fit(white_xy[:,0].reshape(-1, 1), white_xy[:,1].reshape(-1, 1))
+
+        # Use GP to predict
+        x_pred = np.linspace(0, 0.35)
+        y_pred, MSE = gp.predict(x_pred, return_std=True)
+
+        # Display predicted values
+        # print('X linspace: ', x_pred)
+        # print('Predicted y vals: ', y_pred)
 
         # Print results to screen
         # print("Number white segments: ", n_white)
         # print("Number yellow segments: ", n_yellow)
-        # print("White segments: ", segs_white)
-        # print("Yellow segments: ", segs_yellow)
+        # print("White segments: ", white_xy)
+        # print("Yellow segments: ", yellow_xy)
         
+
+
+
+
+
+
+
+
+
+
         # Step 1: predict
         current_time = rospy.get_time()
         dt = current_time - self.t_last_update
