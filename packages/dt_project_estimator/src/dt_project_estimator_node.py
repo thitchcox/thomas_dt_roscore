@@ -11,6 +11,9 @@ import json
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
 
+from matplotlib import pyplot as plt
+import time
+
 class DTProjectEstimatorNode(object):
 
     def __init__(self):
@@ -119,37 +122,40 @@ class DTProjectEstimatorNode(object):
         white_xy = np.array(white_xy)
         yellow_xy = np.array(yellow_xy)
 
-        # print("original: ", white_xy[:,0])
-        # print("modified: ", white_xy[:,0].reshape(-1,1))
+        # Fit GPs
+        # Use a common kernel (for now)
+        myKernel = C(1.0, (1e-3, 1e3)) * RBF(5, (1e-2, 1e2))
 
-        # Train a GP for each set of points.
-        # White points
-        kernel = C(1.0, (1e-3, 1e3)) * RBF(5, 1.0)
-        gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=15)
-        gp.fit(white_xy[:,0].reshape(-1, 1), white_xy[:,1].reshape(-1, 1))
+        # Set up a linspace for prediction
+        y_pred = np.linspace(0, 0.5, num=51).reshape(-1, 1)
 
-        # Use GP to predict
-        x_pred = np.linspace(0, 0.35)
-        y_pred, MSE = gp.predict(x_pred, return_std=True)
+        x_pred_white = []
+        x_pred_yellow = []
 
-        # Display predicted values
-        # print('X linspace: ', x_pred)
-        # print('Predicted y vals: ', y_pred)
+        t_start = time.time()
+        # White GP.  Note that we're fitting x = f(y)
+        if len(white_xy) > 2:
+            x_train_white = white_xy[:, 0]
+            y_train_white = white_xy[:, 1].reshape(-1, 1)
+            gpWhite = GaussianProcessRegressor(kernel=myKernel, optimizer=None)
+            # x = f(y)
+            gpWhite.fit(y_train_white, x_train_white)
+            # Predict
+            x_pred_white = gpWhite.predict(y_pred)
 
-        # Print results to screen
-        # print("Number white segments: ", n_white)
-        # print("Number yellow segments: ", n_yellow)
-        # print("White segments: ", white_xy)
-        # print("Yellow segments: ", yellow_xy)
-        
+        # Yellow GP
+        if len(yellow_xy) > 2:
+            x_train_yellow = yellow_xy[:, 0]
+            y_train_yellow = yellow_xy[:, 1].reshape(-1, 1)
+            gpYellow = GaussianProcessRegressor(kernel=myKernel, optimizer=None)
+            gpYellow.fit(y_train_yellow, x_train_yellow)
+            # Predict
+            x_pred_yellow = gpYellow.predict(y_pred)
 
-
-
-
-
-
-
-
+        # plt.figure()
+        # plt.show()
+        t_end = time.time()
+        print("ELAPOSED TIME: ", t_end - t_start)
 
 
         # Step 1: predict
