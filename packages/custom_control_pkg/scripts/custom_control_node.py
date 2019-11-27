@@ -58,7 +58,7 @@ class custom_control(object):
         
         
         # ######### SPEED CONTROL #########
-        v_bar = 0.5
+        v_bar = 0.6
         #if abs(phi)> 1:
         #    v_bar = 0.3
 
@@ -141,7 +141,7 @@ class custom_control(object):
         #print(self.x)
         #print(self.fsm_state)
         #print(self.errorInt)
-        print("Angular Velocity: %.2f" % u," d: %.2f" % d, " phi: %.2f" % phi," v_bar: %.2f" % v_bar) 
+        #print("Angular Velocity: %.2f" % u," d: %.2f" % d, " phi: %.2f" % phi," v_bar: %.2f" % v_bar) 
         
 
 
