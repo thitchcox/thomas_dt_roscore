@@ -91,7 +91,7 @@ class LanePointDetector(dtu.Configurable, LineDetectorInterface):
         # Fake the data needed by the segment list
         # Store the keypoints as the FIRST endpoint of the line
         # Offset original kp by a smal (pixel) amount to form second endpoint
-        lines = np.hstack((kps, kps - 0.01))
+        lines = np.hstack((kps, kps - 1))
         # Store normals as a bunch of zeros
         normals = np.zeros((len(kps), 2))
         # Store centres as a bunch of zeros
