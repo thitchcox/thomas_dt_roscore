@@ -38,15 +38,23 @@ class LanePointDetector(dtu.Configurable, LineDetectorInterface):
             'red_quality_level',
             'red_min_distance',
             'red_block_size',
+            'dilation_size', 
+            'min_component_size',
+            'canny_thresholds',
+            'hough_threshold',
+            'hough_min_line_length',
+            'hough_max_line_gap',
         ]
 
         dtu.Configurable.__init__(self, param_names, configuration)
+
 
     def _smooth(self, bgr):
         # Smooth the bgr image using bilateral filter
         img_smoothed = cv2.bilateralFilter(bgr, self.bilateral_pixel_neighbourhood, \
             self.bilateral_sigma_color, self.bilateral_sigma_space)
         return img_smoothed
+
 
     def _getMask(self, color):
         # Get mask by thresholding colours in HSV space
@@ -61,6 +69,7 @@ class LanePointDetector(dtu.Configurable, LineDetectorInterface):
         else:
             raise Exception('Error: Undefined color strings...')
         return mask
+
 
     def _getKeypoints(self, mask, color):
         # Set detector parameters depending on line colour
@@ -87,10 +96,11 @@ class LanePointDetector(dtu.Configurable, LineDetectorInterface):
         # Squeeze to 2D array to get rid of extra brace
         return np.squeeze(kps)
 
+
     def _fakeReturns(self, kps):
         # Fake the data needed by the segment list
         # Store the keypoints as the FIRST endpoint of the line
-        # Offset original kp by a smal (pixel) amount to form second endpoint
+        # Offset original kp by a small (pixel) amount to form second endpoint
         lines = np.hstack((kps, kps - 1))
         # Store normals as a bunch of zeros
         normals = np.zeros((len(kps), 2))
@@ -98,14 +108,56 @@ class LanePointDetector(dtu.Configurable, LineDetectorInterface):
         centres = np.zeros((len(kps), 2))
         return lines, normals, centres
 
+
+    def _getLines(self, mask):
+        # Detect white lines using OpenCV LineSegmentDetector
+        # Dilate mask to connect smaller segments
+        ds = self.dilation_size
+        el = cv2.getStructuringElement(0, (2 * ds + 1, 2 * ds + 1), (ds, ds))
+        dilated_img = cv2.dilate(mask, el)
+
+        # Get connected components
+        n_comps, output, stats, _ = cv2.connectedComponentsWithStats(dilated_img, connectivity=8)
+        # Remove background segment (the largest one)
+        sizes = stats[1:, -1]
+        n_comps = n_comps - 1
+        # Remove all components smaller than min_size
+        big_components = np.zeros((output.shape), dtype=np.uint8)
+        for i in range(0, n_comps):
+            if sizes[i] >= self.min_component_size:
+                big_components[output == i + 1] = 255
+
+        # Detect white lines
+        edges = cv2.Canny(big_components, self.canny_thresholds[0], self.canny_thresholds[1], apertureSize=3)
+        lines = cv2.HoughLinesP(edges, 1, np.pi / 180, self.hough_threshold, np.empty(1), 
+                                self.hough_min_line_length, self.hough_max_line_gap)
+        if lines is not None:
+            lines = np.array(lines[:, 0])
+        else:
+            lines = []
+        # Fake the normals and centres, we don't use these
+        normals = np.zeros((len(lines), 2))
+        # Store centres as a bunch of zeros
+        centres = np.zeros((len(lines), 2))
+        return lines, normals, centres
+
+
     def detectLines(self, color):
         with dtu.timeit_clock('_getMask'):
             mask = self._getMask(color)
-        with dtu.timeit_clock('_getKeypoints'):
-            kps = self._getKeypoints(mask, color)
-        with dtu.timeit_clock('_fakeReturns'):
-            lines, normals, centers = self._fakeReturns(kps)
+        # Detect yellow points using ST keypoints.
+        if color == 'yellow':
+            with dtu.timeit_clock('_getKeypoints'):
+                kps = self._getKeypoints(mask, color)
+            with dtu.timeit_clock('_fakeReturns'):
+                lines, normals, centers = self._fakeReturns(kps)
+        # Detect white points using prob. Hough lines
+        # Also for red points, for now
+        if color == 'white' or color == 'red':
+            with dtu.timeit_clock('_getLines'):
+                lines, normals, centers = self._getLines(mask)
         return Detections(lines=lines, normals=normals, area=mask, centers=centers)
+
 
     def setImage(self, bgr):
         # Smooth image, convert to hsv, and convert to grayscale. 
@@ -117,6 +169,7 @@ class LanePointDetector(dtu.Configurable, LineDetectorInterface):
             self.hsv = cv2.cvtColor(self.smoothed, cv2.COLOR_BGR2HSV)
         with dtu.timeit_clock('_greyscale'):
             self.gray = cv2.cvtColor(self.smoothed, cv2.COLOR_BGR2GRAY)
+
 
     def getImage(self):
         return self.bgr

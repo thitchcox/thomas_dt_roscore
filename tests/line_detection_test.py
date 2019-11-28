@@ -137,27 +137,32 @@ if choice == "white_line_detection":
     dilatation_dst = cv2.dilate(cropped_white_mask, element)
 
     # Get connected components
-    n_comps, output, stats, centorids = cv2.connectedComponentsWithStats(dilatation_dst, connectivity=8)
+    n_comps, output, stats, _ = cv2.connectedComponentsWithStats(dilatation_dst, connectivity=8)
     # Remove background
     sizes = stats[1:, -1]
     n_comps = n_comps - 1
     min_size = 100
-    dts = np.zeros((output.shape))
+    dts = np.zeros((output.shape), dtype=np.uint8)
+    print("type dts before:", dts.dtype)
+
     for i in range(0, n_comps):
         if sizes[i] >= min_size:
-            dts[output == i + 1] = 1
+            dts[output == i + 1] = 255
 
     # Skeletonization
-    skel = 255 * skeletonize(dts)
+    # skel = 255 * skeletonize(dts)
 
     # Detect white lines
     #Create default parametrization LSD
     lsd = cv2.createLineSegmentDetector(0)
-    print("type dts:", type(dts))
-    print("type mask: ", type(cropped_white_mask))
-    print(skel)
+    print("type dts:", dts.dtype)
+    print("type mask: ", cropped_white_mask.dtype)
+    # print(skel)
     # #Detect lines in the image
-    lines = lsd.detect(cropped_white_mask)[0] #Position 0 of the returned tuple are the detected lines
+    # lines = lsd.detect(cropped_white_mask)[0] #Position 0 of the returned tuple are the detected lines
+    edges = cv2.Canny(dts, 80, 200, apertureSize=3)
+    lines = cv2.HoughLinesP(edges, 1, np.pi / 180, 2, np.empty(1), 3, 1)
+
 
     # #Draw detected lines in the image
     drawn_img = lsd.drawSegments(0*cropped_white_mask, lines)
@@ -169,4 +174,4 @@ print("Execution time is", time_end - time_start)
 # Write the image to file
 
 cv2.imwrite('output_lines.jpg', drawn_img)
-cv2.imwrite('output_skel.jpg', skel)
+# cv2.imwrite('output_skel.jpg', skel)

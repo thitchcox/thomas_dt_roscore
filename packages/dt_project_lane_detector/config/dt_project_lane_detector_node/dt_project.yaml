@@ -44,6 +44,14 @@ detector:
       red_min_distance: 10
       red_block_size: 15
 
+      # White line detection
+      dilation_size: 3
+      min_component_size: 100
+      canny_thresholds: [80,200]
+      hough_threshold: 2
+      hough_min_line_length: 3
+      hough_max_line_gap:    1
+      
 
 detector_intersection:
  - dt_project_lane_detector.LineDetectorHSV
