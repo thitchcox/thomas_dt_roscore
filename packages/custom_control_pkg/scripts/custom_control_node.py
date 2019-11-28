@@ -35,10 +35,12 @@ class custom_control(object):
         # ##################################
         # ######## WORKING VARIABLES #######
         # ##################################
-        self.x_reference = np.array([[0],[0]])
-        self.theta = np.array([[-4 ** 2/(4*0.5)],[-4],[0]])
+        self.x_reference = np.array([[4],[0.5]])
+        self.theta = np.array([[-2 ** 2/(4*0.5)],[-2],[0]])
         self.previousTime = float(rospy.Time.now().to_sec()) # DOUBLE CHECK, might need to be changed.
-
+        self.previousAdaptTime = float(rospy.Time.now().to_sec()) # DOUBLE CHECK, might need to be changed.
+        self.x = np.array([[0],[0]])
+        self.errorInt = 0
         # ##################################
 
     # ##########################################################################
@@ -48,50 +50,79 @@ class custom_control(object):
 
         d = lanePoseMsg.d
         phi = lanePoseMsg.phi
+        self.x = np.array([[d],[phi]])
         T = float(rospy.Time.now().to_sec()) - float(self.previousTime) # TO BE CHANGED MAYBE
         u_command = 0
+        u_max = 8
+
         
-        #v_bar = 0.6*max(1 - min(abs(phi)/(3.14159/2),1),0.01)
-        v_bar = 0.5
-        P = np.identity(2) # Consider moving to properties
+        
+        # ######### SPEED CONTROL #########
+        v_bar = 0.6
+        #if abs(phi)> 1:
+        #    v_bar = 0.3
+
 
         # ######## REFERENCE MODEL ######## (Could be saved in object properties)
         # Critically damped gains from class
-        k_d = -4
+        k_d = -1
         k_p = -k_d ** 2/(v_bar * 4)
         # Closed loop matrices
         A_r = np.array([[0,v_bar],[k_p, k_d]])
         B_r = np.array([[0],[1]])
 
-        print(A_r)
-        print(T)
+
         
         # Propagate reference state forward (Euler discretization)
+        # Periodic reinitialization (presistency of excitation)
+        if (float(rospy.Time.now().to_sec()) - self.previousAdaptTime) > 3:
+            self.x_reference = self.x # Reset state
+            self.previousAdaptTime = float(rospy.Time.now().to_sec()) 
+
         x_r_k = self.x_reference
-        e_r_k = np.array([[d],[phi]]) - self.x_reference
-        x_r_k1 = np.matmul((np.identity(2) + T*A_r),e_r_k)
+        x_r_k1 = np.matmul((np.identity(2) + T*A_r),x_r_k)
         
 
         # ########## ADAPTIVE LAW #########
         if self.fsm_state == "LANE_FOLLOWING":
-            gamma = 2 # adaptive gain
+            gamma = 0.1 # adaptive gain
         else:
             gamma = 0
-        x_k = np.array([[d],[phi]])
+        x_k = self.x
         e_model = x_k - x_r_k
         psi = np.array([[0,0,0],[d,phi,u_command]]) # Basis matrix
-        theta_dot = -gamma*np.matmul(psi.transpose(), np.matmul(P , e_model))
-        theta_k1 = self.theta + T*theta_dot
+        P = np.array([[0.25,-1],[-1,2]]) # Solution to Lyapunov equation
+        theta_dot = -gamma*np.matmul(psi.transpose(), np.matmul(P , e_model)) # Adaptive law
+        theta_k1 = self.theta + T*theta_dot # Integrate theta
+        theta_k1[0] = max(min(theta_k1[0],0),-10) # Cap theta_k1 (anti-windup)
+        theta_k1[1] = max(min(theta_k1[1],0),-10)
 
         # ############ CONTROL ############
-        #k_phi = 1
-        #k_d = k_phi ** 2/(4*v_bar)
-        print(self.theta)
-        print(x_r_k)
-        print(self.fsm_state)
-        u = self.theta[0]*x_k[0] + self.theta[1]*x_k[1]
+        u_adaptive = self.theta[0]*x_k[0] + self.theta[1]*x_k[1]
         
-        # Publish the command
+        # PD Controller from class...
+        k_phi = -2
+        k_d = -k_phi ** 2/(4*v_bar)
+        u_PD = k_d*x_k[0] + k_phi*x_k[1]
+
+        # PID Controller
+        kp = 10
+        kd = 4
+        ki = 0.3
+        intMax = 1
+        self.errorInt = max(min(self.errorInt,intMax),-intMax) # Anti windup
+        
+        u_PID = kp*(0 - x_k[0]) + kd*(0 - x_k[1]) + ki*self.errorInt
+
+        if abs(u_PID) < u_max and self.fsm_state == "LANE_FOLLOWING": # Only increase integral if we arnt at the max control effort
+            self.errorInt = self.errorInt - x_k[0]*T
+
+
+
+        # ########## PUBLISH #############
+        #u = u_adaptive
+        u = u_PD
+        #u = u_PID
         car_control_msg = Twist2DStamped()
         car_control_msg.v = v_bar
         car_control_msg.omega = u
@@ -101,13 +132,16 @@ class custom_control(object):
         self.previousTime = float(rospy.Time.now().to_sec()) # TO BE CHANGED MAYBE
         self.x_reference = x_r_k1
         self.theta = theta_k1
-        print("Angular Velocity: %.2f" % u," d: %.2f" % d, " phi: %.2f" % phi," v_bar: %.2f" % v_bar) 
 
-
-
-    
-
-
+        # Print stuff
+        #print(self.theta)
+        #print(self.x_reference)
+        
+        #print(T)
+        #print(self.x)
+        #print(self.fsm_state)
+        #print(self.errorInt)
+        #print("Angular Velocity: %.2f" % u," d: %.2f" % d, " phi: %.2f" % phi," v_bar: %.2f" % v_bar) 
 
 
     # ##########################################################################

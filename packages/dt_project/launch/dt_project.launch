@@ -8,15 +8,16 @@
     <arg name="project_param_file_name" default="dt_project"/>
     <arg name="visualization" default="true"/>
     <arg name="ai_interval" default="5" doc="interval with which the linear trafo gets updated. color balance is performed every second."/>
-    <arg name="verbose" default="false"/>
+    <arg name="verbose" default="true"/>
 
 
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <!-- TOGGLE PROJECT ELEMENTS ON AND OFF -->
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
-    <arg name="IEKF_on" default="true"/>
-    <arg name="custom_control_on" default="false"/>
+    <arg name="IEKF_on" default="false"/>
+    <arg name="custom_control_on" default="true"/>
     <arg name="custom_image_processing_on" default="true"/>
+    <arg name="simple_estimator_on" default="true"/>
 
 
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
@@ -36,9 +37,10 @@
     <!-- End FSM -->
 
 
-    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <!-- Start lane following -->
-    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->  
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->  
+
     <!-- Image processing: DEFAULT line_detector_node -->
     <group unless="$(arg custom_image_processing_on)">
         <remap from="line_detector_node/transform" to="anti_instagram_node/transform"/>
@@ -52,7 +54,10 @@
         </include>
     </group>
 
-    <!-- Image processing: PROJECT lane_detector_node -->
+
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+    <!-- PROJECT Image processing: lane_detector_node -->
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <group if="$(arg custom_image_processing_on)">
         <remap from="dt_project_lane_detector_node/transform" to="anti_instagram_node/transform"/>
         <remap from="dt_project_lane_detector_node/fsm_mode" to="fsm_node/mode" />
@@ -65,7 +70,11 @@
             <arg name="param_file_name" value="$(arg project_param_file_name)"/>
         </include>
     </group>
-    
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+
+
+
+
     <!-- ground_projection_node -->
     <!-- Subscribe to either the segment list coming from line_detector_node
     (default) or dt_project_lane_detector_node (project) -->
@@ -106,6 +115,7 @@
 	</group>
 
 
+
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <!-- PROJECT lane_estimation_node -->
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
@@ -115,6 +125,20 @@
         <remap from="dt_project_estimator_node/car_cmd" to="car_cmd_switch_node/cmd"/>
         <remap from="dt_project_estimator_node/fsm_mode" to="fsm_node/mode"/>
         <include file="$(find dt_project_estimator)/launch/dt_project_estimator_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="param_file_name" value="default"/>
+        </include>
+    </group>
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+
+
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+    <!-- PROJECT simple_estimator_node -->
+    <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
+    <!-- TODO need to read the right car_cmd info depending on which node is active.-->
+    <group if="$(arg simple_estimator_on)">
+        <remap from="simple_estimator_node/seglist_ground_projection" to="ground_projection/lineseglist_out"/>
+        <include file="$(find simple_estimator_pkg)/launch/simple_estimator_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="param_file_name" value="default"/>
         </include>
@@ -152,8 +176,11 @@
         (default) or dt_project_estimator_node (project) -->
 		<remap if="$(arg IEKF_on)" from="custom_control_node/lane_pose" 
             to="dt_project_estimator_node/lane_pose"/>
-		<remap unless="$(arg IEKF_on)" from="custom_control_node/lane_pose"
-            to="lane_filter_node/lane_pose"/>        
+		<!-- <remap unless="$(arg IEKF_on)" from="custom_control_node/lane_pose"
+            to="lane_filter_node/lane_pose"/> -->       
+        <remap if="$(arg simple_estimator_on)" from="custom_control_node/lane_pose" 
+            to="simple_estimator_node/lane_pose"/>
+
         <!-- Standard remaps -->
 		<remap from="custom_control_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed" />
         <remap from="custom_control_node/fsm_mode" to="fsm_node/mode"/>
