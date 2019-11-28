@@ -58,7 +58,7 @@ class custom_control(object):
         
         
         # ######### SPEED CONTROL #########
-        v_bar = 0.5
+        v_bar = 0.6
         #if abs(phi)> 1:
         #    v_bar = 0.3
 
@@ -121,8 +121,8 @@ class custom_control(object):
 
         # ########## PUBLISH #############
         #u = u_adaptive
-        #u = u_PD
-        u = u_PID
+        u = u_PD
+        #u = u_PID
         car_control_msg = Twist2DStamped()
         car_control_msg.v = v_bar
         car_control_msg.omega = u
@@ -136,17 +136,12 @@ class custom_control(object):
         # Print stuff
         #print(self.theta)
         #print(self.x_reference)
-        print(T)
-        print(self.x)
-        print(self.fsm_state)
-        print(self.errorInt)
-        print("Angular Velocity: %.2f" % u," d: %.2f" % d, " phi: %.2f" % phi," v_bar: %.2f" % v_bar) 
-
-
-
-    
-
-
+        
+        #print(T)
+        #print(self.x)
+        #print(self.fsm_state)
+        #print(self.errorInt)
+        #print("Angular Velocity: %.2f" % u," d: %.2f" % d, " phi: %.2f" % phi," v_bar: %.2f" % v_bar) 
 
 
     # ##########################################################################
