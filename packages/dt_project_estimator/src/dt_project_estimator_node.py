@@ -8,11 +8,17 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Float32, String
 import json
 
+# #####################
+# DT project add 
+# #####################
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
 
-from matplotlib import pyplot as plt
 import time
+from visualization_msgs.msg import Marker, MarkerArray
+from duckietown_msgs.msg import Segment
+from std_msgs.msg import ColorRGBA
+# #####################
 
 class DTProjectEstimatorNode(object):
 
@@ -51,6 +57,12 @@ class DTProjectEstimatorNode(object):
 
         self.pub_entropy    = rospy.Publisher("~entropy",Float32, queue_size=1)
 
+        # ################################
+        # DT project add
+        # ################################
+        self.veh_name = rospy.get_namespace().strip("/")
+        self.pub_lane = rospy.Publisher("~gp_lanes", MarkerArray, queue_size=1)
+        # ################################
 
         # FSM
         self.sub_switch = rospy.Subscriber("~switch",BoolStamped, self.cbSwitch, queue_size=1)
@@ -91,6 +103,36 @@ class DTProjectEstimatorNode(object):
     def cbSwitch(self, switch_msg):
         self.active = switch_msg.data
 
+    # ########################################################
+    # Charles: display curves in RViz
+    # ########################################################
+    def visualizeCurves(self,*pointArrays):
+        marker_array = MarkerArray()
+        marker = Marker()
+        marker.header.frame_id = self.veh_name
+        marker.ns = self.veh_name + "/line_seg"
+        marker.id = 0
+        marker.action = Marker.ADD
+        marker.lifetime = rospy.Duration.from_sec(5.0)
+        marker.type = Marker.LINE_LIST
+        marker.pose.orientation.w = 1.0
+        marker.scale.x = 0.02
+        for pointArray in pointArrays:
+            for lv1 in range(len(pointArray)-1):
+                seg = Segment()
+                seg.points[0].x = pointArray[lv1][0]
+                seg.points[0].y = pointArray[lv1][1]
+                seg.points[1].x = pointArray[lv1+1][0]
+                seg.points[1].y = pointArray[lv1+1][1]
+                marker.points.append(seg.points[0])
+                marker.points.append(seg.points[1])
+                color = ColorRGBA(r=1.0,g=0.0,b=0.0,a=1.0)
+                marker.colors.append(color)
+                marker.colors.append(color)
+                marker_array.markers.append(marker)
+
+        self.pub_lane.publish(marker_array)
+        # ########################################################
 
     def processSegments(self,segment_list_msg):
         # Get actual timestamp for latency measurement
@@ -105,7 +147,18 @@ class DTProjectEstimatorNode(object):
             self.curvature_res = rospy.get_param('~curvature_res')
             self.filter.updateRangeArray(self.curvature_res)
 
-        # Step 1: Generate an xy list from the data
+        ## #######################################################
+        # ########################################################
+        # Parameters
+        # ########################################################
+        lane_width = 0.23 # [m]
+        lookahead = 0.1   # [m]
+
+
+        # ########################################################
+        # Process inputs
+        # ########################################################
+        # Generate an xy list from the data
         white_xy = []
         yellow_xy = []
         for segment in segment_list_msg.segments:
@@ -122,40 +175,69 @@ class DTProjectEstimatorNode(object):
         white_xy = np.array(white_xy)
         yellow_xy = np.array(yellow_xy)
 
+
+        # ########################################################
         # Fit GPs
-        # Use a common kernel (for now)
-        myKernel = C(1.0, (1e-3, 1e3)) * RBF(5, (1e-2, 1e2))
-
+        # ########################################################
         # Set up a linspace for prediction
-        y_pred = np.linspace(0, 0.5, num=51).reshape(-1, 1)
+        x_pred = np.linspace(0, 0.5, num=51).reshape(-1, 1)
 
-        x_pred_white = []
-        x_pred_yellow = []
+        # Start with the prior
+        y_pred_white = -lane_width / 2.0 * np.ones((len(x_pred), 1))
+        y_pred_yellow = lane_width / 2.0 * np.ones((len(x_pred), 1))
 
         t_start = time.time()
-        # White GP.  Note that we're fitting x = f(y)
+        # White GP.  Note that we're fitting y = f(x)
         if len(white_xy) > 2:
-            x_train_white = white_xy[:, 0]
-            y_train_white = white_xy[:, 1].reshape(-1, 1)
-            gpWhite = GaussianProcessRegressor(kernel=myKernel, optimizer=None)
+            x_train_white = white_xy[:, 0].reshape(-1, 1)
+            y_train_white = white_xy[:, 1]
+            whiteKernel = C(0.01, (-lane_width, 0)) * RBF(5, (0.3, 0.4))
+            # whiteKernel = C(1.0, (1e-3, 1e3)) * RBF(5, (1e-2, 1e2))
+            gpWhite = GaussianProcessRegressor(kernel=whiteKernel, optimizer=None)
             # x = f(y)
-            gpWhite.fit(y_train_white, x_train_white)
+            gpWhite.fit(x_train_white, y_train_white)
             # Predict
-            x_pred_white = gpWhite.predict(y_pred)
+            y_pred_white = gpWhite.predict(x_pred)
 
         # Yellow GP
         if len(yellow_xy) > 2:
-            x_train_yellow = yellow_xy[:, 0]
-            y_train_yellow = yellow_xy[:, 1].reshape(-1, 1)
-            gpYellow = GaussianProcessRegressor(kernel=myKernel, optimizer=None)
-            gpYellow.fit(y_train_yellow, x_train_yellow)
+            x_train_yellow = yellow_xy[:, 0].reshape(-1, 1)
+            y_train_yellow = yellow_xy[:, 1]
+            yellowKernel = C(lane_width / 2.0, (0, lane_width)) * RBF(5, (0.3, 0.4))
+            gpYellow = GaussianProcessRegressor(kernel=yellowKernel, optimizer=None)
+            gpYellow.fit(x_train_yellow, y_train_yellow)
             # Predict
-            x_pred_yellow = gpYellow.predict(y_pred)
-
-        # plt.figure()
-        # plt.show()
+            y_pred_yellow = gpYellow.predict(x_pred)
         t_end = time.time()
-        print("ELAPOSED TIME: ", t_end - t_start)
+        print("MODEL BUILDING TIME: ", t_end - t_start)
+
+        # Make xy point arrays
+        xy_gp_white = np.hstack((x_pred, y_pred_white.reshape(-1, 1)))
+        xy_gp_yellow = np.hstack((x_pred, y_pred_yellow.reshape(-1, 1)))
+
+
+        # ########################################################
+        # Display
+        # ########################################################    
+        self.visualizeCurves(xy_gp_white, xy_gp_yellow)
+
+
+        # ########################################################
+        # Compute d and \phi
+        # ########################################################
+        # Average the lane estimates to get the midpath
+        # y_midpath = np.mean(np.hstack((y_pred_yellow, y_pred_yellow)), axis=1)
+
+        # # Get midpath points within lookahead distance
+        # within_lookahead = x_pred <= lookahead
+        # x_in_lookahead = x_pred[within_lookahead]
+        # y_in_lookahead = y_midpath[within_lookahead]
+
+        # Fit a line to these points
+
+
+
+        ## #######################################################
 
 
         # Step 1: predict

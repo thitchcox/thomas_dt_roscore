@@ -3,6 +3,10 @@ import numpy as np
 from dtProjectHarris import dtProjectHarris
 import time
 
+from skimage.morphology import skeletonize
+from skimage.util import invert
+# from skimage import data
+
 # DONE : 
 # - Detect harris an orb features on various images.  Harris on yellow bw mask
 #   seems to be working best for yellow points.
@@ -18,7 +22,8 @@ import time
 # - Pipe the outout of gp fit into estimation node
 
 # Select an image to process
-src = cv2.imread('frame0003.jpg')
+my_dir = './training_data/long_run/'
+src = cv2.imread(my_dir + 'frame0110.jpg')
 # src = cv2.imread('frame0446.jpg')
 # src = cv2.imread('frame0747.jpg')
 # src = cv2.imread('frame0141.jpg')
@@ -32,7 +37,8 @@ src = cv2.imread('frame0003.jpg')
 # choice = "orb_only_yellow"
 # choice = "orb_only_white"
 # choice = "gf2t_yellow" 
-choice = "gf2t_white" 
+# choice = "gf2t_white" 
+choice = "white_line_detection"
 
 ################################################
 
@@ -123,10 +129,44 @@ if choice == "gf2t_yellow" or choice == "gf2t_white":
         x,y = lv1.ravel()
         cv2.circle(dts, (x,y), 3, 255, -1)
 
+if choice == "white_line_detection":
+    # First dilate to connect segments
+    dilatation_type = 0
+    dilatation_size = 3
+    element = cv2.getStructuringElement(dilatation_type, (2*dilatation_size + 1, 2*dilatation_size+1), (dilatation_size, dilatation_size))
+    dilatation_dst = cv2.dilate(cropped_white_mask, element)
+
+    # Get connected components
+    n_comps, output, stats, centorids = cv2.connectedComponentsWithStats(dilatation_dst, connectivity=8)
+    # Remove background
+    sizes = stats[1:, -1]
+    n_comps = n_comps - 1
+    min_size = 100
+    dts = np.zeros((output.shape))
+    for i in range(0, n_comps):
+        if sizes[i] >= min_size:
+            dts[output == i + 1] = 1
+
+    # Skeletonization
+    skel = 255 * skeletonize(dts)
+
+    # Detect white lines
+    #Create default parametrization LSD
+    lsd = cv2.createLineSegmentDetector(0)
+    print("type dts:", type(dts))
+    print("type mask: ", type(cropped_white_mask))
+    print(skel)
+    # #Detect lines in the image
+    lines = lsd.detect(cropped_white_mask)[0] #Position 0 of the returned tuple are the detected lines
+
+    # #Draw detected lines in the image
+    drawn_img = lsd.drawSegments(0*cropped_white_mask, lines)
+
 # Printing and debugging.
 time_end = time.time()
 print("Execution time is", time_end - time_start)
-print("List of detected corners", corner_xy)
-
+# print("List of detected corners", corner_xy)
 # Write the image to file
-cv2.imwrite('output.jpg', dts)
+
+cv2.imwrite('output_lines.jpg', drawn_img)
+cv2.imwrite('output_skel.jpg', skel)
