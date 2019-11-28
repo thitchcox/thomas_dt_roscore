@@ -15,7 +15,7 @@ y_true = f(x_true).ravel()
 # Get data
 x_train = np.linspace(0, 10, num=20).reshape(-1, 1)
 y_train = f(x_train).ravel()
-
+print(y_train)
 # Set the kernel
 kernel = C(1.0, (1e-3, 1e3)) * RBF(5, (1e-2, 1e2))
 
