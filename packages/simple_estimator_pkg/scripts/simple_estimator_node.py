@@ -145,7 +145,7 @@ class simple_estimator(object):
         #" phiWhite: %.2f" % phiWhite," phiYellow: %.2f" % phiYellow,
         print(whitePointsArray)
         #print(whitePointsArray)
-        print("Iter: %d" % self.testCount," nWhite: %.2f" % nWhite, " nYellow: %.2f" % nYellow," phi: %.2f" % phi," distWhite: %.2f" % distWhite," distYellow: %.2f" % distYellow," d %.2f" % d) 
+        #print("Iter: %d" % self.testCount," nWhite: %.2f" % nWhite, " nYellow: %.2f" % nYellow," phi: %.2f" % phi," distWhite: %.2f" % distWhite," distYellow: %.2f" % distYellow," d %.2f" % d) 
     
     def predict(self,carCmdMsg):
         v = carCmdMsg.v 
@@ -176,7 +176,6 @@ class simple_estimator(object):
         marker.scale.x = 0.02
         for pointArray in pointArrays:
             arrayShape = np.shape(pointArray)
-            print(pointArray)
             for lv1 in range(arrayShape[1]-1):
                 seg = Segment()
                 seg.points[0].x = pointArray[lv1][0]

@@ -142,12 +142,6 @@ class custom_control(object):
         #print(self.fsm_state)
         #print(self.errorInt)
         #print("Angular Velocity: %.2f" % u," d: %.2f" % d, " phi: %.2f" % phi," v_bar: %.2f" % v_bar) 
-        
-
-
-    
-
-
 
 
     # ##########################################################################
