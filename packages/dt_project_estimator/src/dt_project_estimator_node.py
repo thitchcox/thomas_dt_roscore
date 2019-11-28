@@ -35,6 +35,12 @@ class DTProjectEstimatorNode(object):
         self.phi_median = []
         self.latencyArray = []
 
+        # #####################
+        # DT project add 
+        # #####################
+        self.buffer_white = []
+        self.buffer_yellow = []
+        # #####################
 
         # Define Constants
         self.curvature_res = self.filter.curvature_res
@@ -132,7 +138,10 @@ class DTProjectEstimatorNode(object):
                 marker_array.markers.append(marker)
 
         self.pub_lane.publish(marker_array)
-        # ########################################################
+
+    def computeRad(self, xy_array):
+        return np.sqrt(xy_array[:, 0] ** 2 + xy_array[:, 1] ** 2)
+    # ########################################################
 
     def processSegments(self,segment_list_msg):
         # Get actual timestamp for latency measurement
@@ -152,7 +161,10 @@ class DTProjectEstimatorNode(object):
         # Parameters
         # ########################################################
         lane_width = 0.23 # [m]
+        valid_rad  = 0.5 # [m]
         lookahead = 0.1   # [m]
+        n_test_points = 50
+        max_buffer_size = 25
 
 
         # ########################################################
@@ -177,65 +189,169 @@ class DTProjectEstimatorNode(object):
 
 
         # ########################################################
+        # Process buffer
+        # ########################################################
+        # Integrate the odometry
+        current_time = rospy.get_time()
+        dt = current_time - self.t_last_update
+        self.t_last_update = current_time
+
+        delta_x = self.velocity.v * dt
+        delta_theta = self.velocity.omega * dt
+        # Form the displacement
+        delta_r = delta_x * np.array([-np.sin(delta_theta), np.cos(delta_theta)])
+
+        # If buffers contains data, propogate it BACKWARD
+        if len(self.buffer_white) > 0:
+            self.buffer_white = self.buffer_white - delta_r
+        if len(self.buffer_yellow) > 0:
+            self.buffer_yellow = self.buffer_yellow - delta_r
+        
+        # If new observations were received, then append them to the top of the list
+        if len(white_xy) > 0:
+            if len(self.buffer_white) > 0:
+                self.buffer_white = np.vstack((white_xy, self.buffer_white))
+            else:
+                self.buffer_white = white_xy
+        if len(yellow_xy) > 0:
+            if len(self.buffer_yellow) > 0:
+                self.buffer_yellow = np.vstack((yellow_xy, self.buffer_yellow))
+            else:
+                self.buffer_yellow = yellow_xy
+
+
+        # ########################################################
+        # Trim training points to within a valid radius
+        # ########################################################
+        valid_white_xy = []
+        valid_yellow_xy = []
+
+        # Select points within rad
+        if len(self.buffer_white) > 0:
+            tf_valid_white = self.computeRad(self.buffer_white) <= valid_rad
+            valid_white_xy = self.buffer_white[tf_valid_white, :]
+
+        if len(self.buffer_yellow) > 0:
+            tf_valid_yellow = self.computeRad(self.buffer_yellow) <= valid_rad
+            valid_yellow_xy = self.buffer_yellow[tf_valid_yellow, :]
+
+
+        # ########################################################
         # Fit GPs
         # ########################################################
         # Set up a linspace for prediction
-        x_pred = np.linspace(0, 0.5, num=51).reshape(-1, 1)
+        if len(valid_white_xy) > 0:
+            x_pred_white = np.linspace(0, np.minimum(valid_rad, np.amax(valid_white_xy[:, 0])), \
+                num=n_test_points+1).reshape(-1, 1)
+        else:
+            x_pred_white = np.linspace(0, valid_rad, num=n_test_points+1).reshape(-1, 1)
+
+        if len(valid_yellow_xy) > 0:
+            x_pred_yellow = np.linspace(0, np.minimum(valid_rad, np.amax(valid_yellow_xy[:, 0])), \
+                num=n_test_points+1).reshape(-1, 1)
+        else:
+            x_pred_yellow = np.linspace(0, valid_rad, num=n_test_points+1).reshape(-1, 1)
 
         # Start with the prior
-        y_pred_white = -lane_width / 2.0 * np.ones((len(x_pred), 1))
-        y_pred_yellow = lane_width / 2.0 * np.ones((len(x_pred), 1))
+        y_pred_white = -lane_width / 2.0 * np.ones((len(x_pred_white), 1))
+        y_pred_yellow = lane_width / 2.0 * np.ones((len(x_pred_yellow), 1))
 
         t_start = time.time()
         # White GP.  Note that we're fitting y = f(x)
-        if len(white_xy) > 2:
-            x_train_white = white_xy[:, 0].reshape(-1, 1)
-            y_train_white = white_xy[:, 1]
+        gpWhite = []
+        if len(valid_white_xy) > 2:
+            x_train_white = valid_white_xy[:, 0].reshape(-1, 1)
+            y_train_white = valid_white_xy[:, 1]
             whiteKernel = C(0.01, (-lane_width, 0)) * RBF(5, (0.3, 0.4))
             # whiteKernel = C(1.0, (1e-3, 1e3)) * RBF(5, (1e-2, 1e2))
             gpWhite = GaussianProcessRegressor(kernel=whiteKernel, optimizer=None)
             # x = f(y)
             gpWhite.fit(x_train_white, y_train_white)
             # Predict
-            y_pred_white = gpWhite.predict(x_pred)
+            y_pred_white = gpWhite.predict(x_pred_white)
 
         # Yellow GP
-        if len(yellow_xy) > 2:
-            x_train_yellow = yellow_xy[:, 0].reshape(-1, 1)
-            y_train_yellow = yellow_xy[:, 1]
-            yellowKernel = C(lane_width / 2.0, (0, lane_width)) * RBF(5, (0.3, 0.4))
+        gpYellow = []
+        if len(valid_yellow_xy) > 2:
+            x_train_yellow = valid_yellow_xy[:, 0].reshape(-1, 1)
+            y_train_yellow = valid_yellow_xy[:, 1]
+            # yellowKernel = C(lane_width / 2.0, (0, lane_width)) * RBF(5, (0.3,
+            # 0.4))
+            yellowKernel = C(0.01, (0, lane_width)) * RBF(5, (0.3, 0.4))
             gpYellow = GaussianProcessRegressor(kernel=yellowKernel, optimizer=None)
             gpYellow.fit(x_train_yellow, y_train_yellow)
             # Predict
-            y_pred_yellow = gpYellow.predict(x_pred)
+            y_pred_yellow = gpYellow.predict(x_pred_yellow)
         t_end = time.time()
-        print("MODEL BUILDING TIME: ", t_end - t_start)
+        # print("MODEL BUILDING TIME: ", t_end - t_start)
 
         # Make xy point arrays
-        xy_gp_white = np.hstack((x_pred, y_pred_white.reshape(-1, 1)))
-        xy_gp_yellow = np.hstack((x_pred, y_pred_yellow.reshape(-1, 1)))
+        xy_gp_white = np.hstack((x_pred_white, y_pred_white.reshape(-1, 1)))
+        xy_gp_yellow = np.hstack((x_pred_yellow, y_pred_yellow.reshape(-1, 1)))
+
+        # Trim predicted values to valid radius
+        # Logical conditions
+        tf_valid_white = self.computeRad(xy_gp_white) <= valid_rad
+        tf_valid_yellow = self.computeRad(xy_gp_yellow) <= valid_rad
+        
+        # Select points within rad
+        valid_xy_gp_white = xy_gp_white[tf_valid_white, :]
+        valid_xy_gp_yellow = xy_gp_yellow[tf_valid_yellow, :]
 
 
         # ########################################################
         # Display
         # ########################################################    
-        self.visualizeCurves(xy_gp_white, xy_gp_yellow)
+        self.visualizeCurves(valid_xy_gp_white, valid_xy_gp_yellow)
 
 
         # ########################################################
         # Compute d and \phi
         # ########################################################
-        # Average the lane estimates to get the midpath
-        # y_midpath = np.mean(np.hstack((y_pred_yellow, y_pred_yellow)), axis=1)
+        # Evaluate each GP at the lookahead distance and average to get d
+        # Start with prior
+        y_white = -lane_width / 2
+        y_yellow = lane_width / 2
 
-        # # Get midpath points within lookahead distance
-        # within_lookahead = x_pred <= lookahead
-        # x_in_lookahead = x_pred[within_lookahead]
-        # y_in_lookahead = y_midpath[within_lookahead]
+        if gpWhite: 
+            y_white = gpWhite.predict(np.array([lookahead]).reshape(-1, 1))
+        if gpYellow:
+            y_yellow = gpYellow.predict(np.array([lookahead]).reshape(-1, 1))
 
-        # Fit a line to these points
+        # Take the average, and negate
+        disp = np.mean((y_white, y_yellow))
+        d = -disp
+
+        # Compute phi from the lookahead distance and d
+        L = np.sqrt(d ** 2 + lookahead ** 2)
+        phi = disp / L
+
+        print("D is: ", d)
+        print("phi is: ", phi)
+
+        # ########################################################
+        # Publish the lanePose message
+        # ########################################################
+        lanePose = LanePose()
+        lanePose.header.stamp = segment_list_msg.header.stamp
+        lanePose.d = d
+        lanePose.phi = phi
+        lanePose.in_lane = True
+        lanePose.status = lanePose.NORMAL
+        lanePose.curvature = 0
+        self.pub_lane_pose.publish(lanePose)
 
 
+        # ########################################################
+        # Save valid training points to buffer
+        # ########################################################
+        # Cap the buffer at max_buffer_size
+        white_max = np.minimum(len(self.buffer_white), max_buffer_size)
+        yellow_max = np.minimum(len(self.buffer_yellow), max_buffer_size)
+        self.buffer_white = self.buffer_white[0 : white_max - 1]
+        self.buffer_yellow = self.buffer_yellow[0 : yellow_max - 1]
+        # print ("SIZE of white buffer: ", len(self.buffer_white))
+        # print ("YELLOW of yellow buffer: ", len(self.buffer_yellow))
 
         ## #######################################################
 
@@ -247,7 +363,7 @@ class DTProjectEstimatorNode(object):
         w = self.velocity.omega
 
         self.filter.predict(dt=dt, v=v, w=w)
-        self.t_last_update = current_time
+        # self.t_last_update = current_time
 
         # Step 2: update
 
@@ -268,19 +384,19 @@ class DTProjectEstimatorNode(object):
         max_val = self.filter.getMax()
         in_lane = max_val > self.filter.min_max
         # build lane pose message to send
-        lanePose = LanePose()
-        lanePose.header.stamp = segment_list_msg.header.stamp
-        lanePose.d = d_max[0]
-        lanePose.phi = phi_max[0]
-        lanePose.in_lane = in_lane
-        # XXX: is it always NORMAL?
-        lanePose.status = lanePose.NORMAL
+        # lanePose = LanePose()
+        # lanePose.header.stamp = segment_list_msg.header.stamp
+        # lanePose.d = d_max[0]
+        # lanePose.phi = phi_max[0]
+        # lanePose.in_lane = in_lane
+        # # XXX: is it always NORMAL?
+        # lanePose.status = lanePose.NORMAL
 
 
-        if self.curvature_res > 0:
-            lanePose.curvature = self.filter.getCurvature(d_max[1:], phi_max[1:])
+        # if self.curvature_res > 0:
+        #     lanePose.curvature = self.filter.getCurvature(d_max[1:], phi_max[1:])
 
-        self.pub_lane_pose.publish(lanePose)
+        # self.pub_lane_pose.publish(lanePose)
 
         # TODO-TAL add a debug param to not publish the image !!
         # TODO-TAL also, the CvBridge is re instantiated every time... 

@@ -46,7 +46,7 @@ detector:
 
       # White line detection
       dilation_size: 3
-      min_component_size: 100
+      min_component_size: 300
       canny_thresholds: [80,200]
       hough_threshold: 2
       hough_min_line_length: 3
