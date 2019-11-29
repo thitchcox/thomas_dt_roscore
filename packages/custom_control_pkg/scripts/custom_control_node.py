@@ -58,9 +58,9 @@ class custom_control(object):
         
         
         # ######### SPEED CONTROL #########
-        v_bar = 0.6
-        #if abs(phi)> 1:
-        #    v_bar = 0.3
+        v_bar = 0.8
+        if abs(phi)> 1:
+            v_bar = 0.3
 
 
         # ######## REFERENCE MODEL ######## (Could be saved in object properties)
