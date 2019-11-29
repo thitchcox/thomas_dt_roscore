@@ -7,6 +7,8 @@ from visualization_msgs.msg import Marker, MarkerArray
 from std_msgs.msg import String, ColorRGBA #Imports msg
 import time
 import numpy as np
+from sklearn import linear_model
+
 
 class simple_estimator(object):
     # ##########################################################################
@@ -38,7 +40,9 @@ class simple_estimator(object):
         # ##################################
         # ######## WORKING VARIABLES #######
         # ##################################
-
+        self.ransacW = linear_model.RANSACRegressor()
+        self.ransacW.residual_threshold = 0.05
+        self.ransacY = linear_model.RANSACRegressor()
         self.testCount = 0
         # ##################################
 
@@ -55,9 +59,9 @@ class simple_estimator(object):
         # Extract data from segments back into separated arrays.
         # ONLY IF THEY ARE CLOSE
         for segment in segListMsg.segments:
-            if segment.color == segment.WHITE and segment.points[0].x <= 0.5:
+            if segment.color == segment.WHITE and segment.points[0].x <= 0.4:
                 whitePointsList.append(np.array([segment.points[0].x,segment.points[0].y]))
-            if segment.color == segment.YELLOW and segment.points[0].x <= 0.5:
+            if segment.color == segment.YELLOW and segment.points[0].x <= 0.4:
                 yellowPointsList.append(np.array([segment.points[0].x,segment.points[0].y]))
         whitePointsArray = np.array(whitePointsList)
         yellowPointsArray = np.array(yellowPointsList)
@@ -73,9 +77,13 @@ class simple_estimator(object):
         distWhite = 0
         distYellow = 0
         if nWhite >= 2: # Need minimum of two points to define a line.
-            zWhite = np.polyfit(whitePointsArray[:,0],whitePointsArray[:,1],deg=1) # Least-squares fit straight line
-            m = zWhite[0]
-            c = zWhite[1]
+            self.ransacW.fit(np.reshape(whitePointsArray[:,0],(-1,1)), np.array(np.reshape(whitePointsArray[:,1],(-1,1))))
+            zWhite = np.array([self.ransacW.estimator_.coef_, self.ransacW.estimator_.intercept_])
+
+            #zWhite = np.polyfit(whitePointsArray[:,0],whitePointsArray[:,1],deg=1) # Least-squares fit straight line
+
+            m = np.asscalar(zWhite[0])
+            c = np.asscalar(zWhite[1])
             phiWhite = np.arcsin(-m/(np.sqrt(1 + m**2)))
             r_wz_b = np.array([[-c*m/(1+m**2)],[c-(c*m**2/(1+m**2))]]) # Position vector to nearest point on the line (normal to line)
             C_wb = np.array([[np.cos(phiWhite),-np.sin(phiWhite)],[np.sin(phiWhite), np.cos(phiWhite)]])
@@ -96,9 +104,13 @@ class simple_estimator(object):
             distWhite = r_zd_w[1] # Distance TO duckiebot from desired point.
 
         if nYellow >= 2:  # Need minimum of two points to define a line.
-            zYellow = np.polyfit(yellowPointsArray[:,0],yellowPointsArray[:,1],deg=1)
-            m = zYellow[0]
-            c = zYellow[1]
+            self.ransacY.fit(np.reshape(yellowPointsArray[:,0],(-1,1)), np.array(np.reshape(yellowPointsArray[:,1],(-1,1))))
+            zYellow = np.array([self.ransacY.estimator_.coef_, self.ransacY.estimator_.intercept_])
+            #print(zYellow)
+            #zWhite = np.polyfit(whitePointsArray[:,0],whitePointsArray[:,1],deg=1) # Least-squares fit straight line
+
+            m = np.asscalar(zYellow[0])
+            c = np.asscalar(zYellow[1])
             phiYellow = np.arcsin(-m/(np.sqrt(1 + m**2)))
             r_yz_b = np.array([[-c*m/(1+m**2)],[c-(c*m**2/(1+m**2))]])
             C_yb = np.array([[np.cos(phiYellow),-np.sin(phiYellow)],[np.sin(phiYellow), np.cos(phiYellow)]])
@@ -110,8 +122,8 @@ class simple_estimator(object):
         # Combination logic
         if nWhite >= 2 and nYellow >= 2:
             #phi = (phiWhite + phiYellow)/2
-            phi =(phiYellow + phiWhite)/2
-            d =  (distYellow + distWhite)/2
+            phi =(phiYellow)
+            d =  (distYellow)
             pa1 = self.line2PointArray(zWhite)
             pa2 = self.line2PointArray(zYellow)
             self.visualizeCurves(pa1,pa2)
@@ -143,7 +155,7 @@ class simple_estimator(object):
 
         # ######### PRINT ##########
         #" phiWhite: %.2f" % phiWhite," phiYellow: %.2f" % phiYellow,
-        print(whitePointsArray)
+       # print(whitePointsArray)
         #print(whitePointsArray)
         #print("Iter: %d" % self.testCount," nWhite: %.2f" % nWhite, " nYellow: %.2f" % nYellow," phi: %.2f" % phi," distWhite: %.2f" % distWhite," distYellow: %.2f" % distYellow," d %.2f" % d) 
     

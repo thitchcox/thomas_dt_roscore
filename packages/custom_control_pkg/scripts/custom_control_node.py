@@ -101,7 +101,7 @@ class custom_control(object):
         u_adaptive = self.theta[0]*x_k[0] + self.theta[1]*x_k[1]
         
         # PD Controller from class...
-        k_phi = -2
+        k_phi = -3
         k_d = -k_phi ** 2/(4*v_bar)
         u_PD = k_d*x_k[0] + k_phi*x_k[1]
 
