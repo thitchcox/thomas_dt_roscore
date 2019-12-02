@@ -27,20 +27,22 @@
     <arg name="custom_image_processing_on" default="true"/>
     <arg name="simple_estimator_on" default="true"/>
 
-        <!-- Line Detector -->
-        <group if="$(arg /lane_following/line_detection)">
-                <remap from="line_detector_node/transform" to="anti_instagram_node/transform"/>
-                <remap from="line_detector_node/corrected_image/compressed" to="corrected_image/compressed"/>
-                <include file="$(find line_detector)/launch/line_detector_node.launch">
-                    <arg name="veh" value="$(arg veh)"/>
-                    <arg name="config" value="$(arg config)"/>
-                    <!-- NOTE: "line_detector_param_file_name" as special case -->
-                    <arg name="param_file_name" value="$(arg line_detector_param_file_name)"/>
-                    <arg name="verbose" value="$(arg verbose)" />
-                </include>
+            <!-- Line Detector -->
+            <group if="$(arg /lane_following/line_detection)">
+                <group unless="$(arg custom_image_processing_on"> <!-- Do not activate if custom image processing is on -->
+                    <remap from="line_detector_node/transform" to="anti_instagram_node/transform"/>
+                    <remap from="line_detector_node/corrected_image/compressed" to="corrected_image/compressed"/>
+                    <include file="$(find line_detector)/launch/line_detector_node.launch">
+                        <arg name="veh" value="$(arg veh)"/>
+                        <arg name="config" value="$(arg config)"/>
+                        <!-- NOTE: "line_detector_param_file_name" as special case -->
+                        <arg name="param_file_name" value="$(arg line_detector_param_file_name)"/>
+                        <arg name="verbose" value="$(arg verbose)" />
+                    </include>
+                </group>
             </group>
 
-            <!-- Ground Projection -->
+            <!-- Ground Projection - Always on -->
             <group if="$(arg /lane_following/ground_projection)">
                     <include file="$(find ground_projection)/launch/ground_projection.launch">
                         <arg name="veh" value="$(arg veh)"/>
@@ -51,39 +53,44 @@
 
             <!-- Lane Filter -->
             <group if="$(arg /lane_following/lane_filter)">
-                <remap from="lane_filter_node/segment_list" to="ground_projection/lineseglist_out"/>
-                <remap from="lane_filter_node/car_cmd" to="/$(arg veh)/car_cmd"/>
-                <include file="$(find lane_filter)/launch/lane_filter_node.launch">
-                    <arg name="veh" value="$(arg veh)"/>
-                    <arg name="config" value="$(arg config)"/>
-                    <arg name="param_file_name" value="$(arg param_file_name)"/>
-                </include>
+                <group unless="$(arg simple_estimator_on)"> <!-- Do not activate if simple estimator is on. TODO also dont if Thomas' estimator is on -->
+                    <remap from="lane_filter_node/segment_list" to="ground_projection/lineseglist_out"/>
+                    <remap from="lane_filter_node/car_cmd" to="/$(arg veh)/car_cmd"/>
+                    <include file="$(find lane_filter)/launch/lane_filter_node.launch">
+                        <arg name="veh" value="$(arg veh)"/>
+                        <arg name="config" value="$(arg config)"/>
+                        <arg name="param_file_name" value="$(arg param_file_name)"/>
+                    </include>
+                </group>
             </group>
             
             <!-- Lane controller -->
             <group if="$(arg /lane_following/lane_controller)">
-                <remap from="lane_controller_node/lane_pose" to="lane_filter_node/lane_pose"/>
-                <remap from="lane_controller_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed" />
-                <remap from="lane_controller_node/actuator_limits" to="inverse_kinematics_node/actuator_limits" />
+                <group unless="$(arg custom_control_on)"> <!-- Do not activate if custom control is on -->
+                    <remap from="lane_controller_node/lane_pose" to="lane_filter_node/lane_pose"/>
+                    <remap from="lane_controller_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed" />
+                    <remap from="lane_controller_node/actuator_limits" to="inverse_kinematics_node/actuator_limits" />
 
-                <include file="$(find lane_control)/launch/lane_controller_node.launch">
-                    <arg name="veh" value="$(arg veh)"/>
-                    <arg name="config" value="$(arg config)"/>
-                    <arg name="param_file_name" value="$(arg param_file_name)"/>
-                </include>
+                    <include file="$(find lane_control)/launch/lane_controller_node.launch">
+                        <arg name="veh" value="$(arg veh)"/>
+                        <arg name="config" value="$(arg config)"/>
+                        <arg name="param_file_name" value="$(arg param_file_name)"/>
+                    </include>
+                </group>
             </group>
 
             <!-- Inverse Kinematic Node -->
             <group if="$(arg inverse_kinematics)">
-                <remap from="inverse_kinematics_node/car_cmd" to="lane_controller_node/car_cmd"/>
+                <!-- read from custom control if active -->
+                <remap if="$(arg custom_control_on)" from="inverse_kinematics_node/car_cmd" to="custom_control_node/car_cmd"/>
+                <remap unless="$(arg custom_control_on)" from="inverse_kinematics_node/car_cmd" to="lane_controller_node/car_cmd"/>
                 <remap from="inverse_kinematics_node/wheels_cmd" to="wheels_driver_node/wheels_cmd" />
+                
                 <include file="$(find dagu_car)/launch/inverse_kinematics_node.launch">
                     <arg name="veh" value="$(arg veh)"/>
                     <arg name="config" value="$(arg config)"/>
                 </include>
             </group>
-    
-
 
 
             <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
@@ -109,7 +116,6 @@
             <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
             <!-- PROJECT lane_estimation_node -->
             <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
-            <!-- TODO need to read the right car_cmd info depending on which node is active.-->
             <group if="$(arg gp_estimator_on)">
                 <remap from="dt_project_estimator_node/segment_list" to="ground_projection/lineseglist_out"/>
                 <remap from="dt_project_estimator_node/car_cmd" to="/$(arg veh)/car_cmd"/>
@@ -127,7 +133,6 @@
             <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
             <!-- PROJECT simple_estimator_node -->
             <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
-            <!-- TODO need to read the right car_cmd info depending on which node is active.-->
             <group if="$(arg simple_estimator_on)">
                 <remap from="simple_estimator_node/seglist_ground_projection" to="ground_projection/lineseglist_out"/>
                 <include file="$(find simple_estimator_pkg)/launch/simple_estimator_node.launch">
@@ -143,15 +148,11 @@
             <!-- PROJECT controller -->
             <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
             <group if="$(arg custom_control_on)">
-                <!-- Subscribe to either the lane pose coming from lane_filter_node
-                (default) or dt_project_estimator_node (project) -->
-                <remap if="$(arg gp_estimator_on)" from="custom_control_node/lane_pose" 
-                    to="dt_project_estimator_node/lane_pose"/>
-                <!-- <remap unless="$(arg gp_estimator_on)" from="custom_control_node/lane_pose"
-                    to="lane_filter_node/lane_pose"/> -->       
-                <remap if="$(arg simple_estimator_on)" from="custom_control_node/lane_pose" 
-                    to="simple_estimator_node/lane_pose"/>
-
+                <!-- Subscribe to either the lane pose coming from lane_filter_node (default) or dt_project_estimator_node (project) -->
+                <remap if="$(arg simple_estimator_on)" from="custom_control_node/lane_pose" to="simple_estimator_node/lane_pose"/>
+                <remap if="$(arg gp_estimator_on)" from="custom_control_node/lane_pose" to="dt_project_estimator_node/lane_pose"/>
+                <remap unless="$(arg simple_estimator_on)" from="custom_control_node/lane_pose" to="lane_filter_node/lane_pose"/>     
+                
                 <!-- Standard remaps -->
                 <remap from="custom_control_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed" />
                 <remap from="custom_control_node/fsm_mode" to="fsm_node/mode"/>
