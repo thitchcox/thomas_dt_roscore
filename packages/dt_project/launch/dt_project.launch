@@ -16,7 +16,7 @@
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <arg name="IEKF_on" default="false"/>
     <arg name="custom_control_on" default="true"/>
-    <arg name="custom_image_processing_on" default="false"/>
+    <arg name="custom_image_processing_on" default="true"/>
     <arg name="simple_estimator_on" default="true"/>
 
 
@@ -176,7 +176,7 @@
         (default) or dt_project_estimator_node (project) -->
 		<remap if="$(arg IEKF_on)" from="custom_control_node/lane_pose" 
             to="dt_project_estimator_node/lane_pose"/>
-		<!-- <remap unless="$(arg IEKF_on)" from="custom_control_node/lane_pose"
+		<remap unless="$(arg IEKF_on)" from="custom_control_node/lane_pose"
             to="lane_filter_node/lane_pose"/> -->       
         <remap if="$(arg simple_estimator_on)" from="custom_control_node/lane_pose" 
             to="simple_estimator_node/lane_pose"/>
