@@ -21,7 +21,7 @@
     <arg name="gp_estimator_on" default="false"/>
     <arg name="custom_control_on" default="true"/>
     <arg name="custom_image_processing_on" default="false"/> <!-- TODO, some error with image processing not always triggered.-->
-    <arg name="simple_estimator_on" default="true"/>
+    <arg name="simple_estimator_on" default="false"/>
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
 
 

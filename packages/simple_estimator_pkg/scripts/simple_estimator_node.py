@@ -49,7 +49,7 @@ class simple_estimator(object):
 
         # Inclusion zone for segments
         self.x_min = 0
-        self.x_max = 0.25
+        self.x_max = 0.5
         self.y_min = -0.2
         self.y_max = 0.2
 
@@ -85,7 +85,7 @@ class simple_estimator(object):
 
         # ######## EXTRACT ######### data from segments back into separated arrays.
         whitePointsArray, yellowPointsArray = self.segList2Array(segListMsg)
-
+        print(whitePointsArray)
         # ###### FIT TWO LANES ########
         z = self.fitTwoLanes(whitePointsArray,yellowPointsArray)
         #self.zTwoLane = z
@@ -103,14 +103,14 @@ class simple_estimator(object):
         r_wz_b = np.array([[-c*m/(1+m**2)],[c-(c*m**2/(1+m**2))]]) # Position vector to nearest point on the line (normal to line)
         C_wb = np.array([[np.cos(phiWhite),-np.sin(phiWhite)],[np.sin(phiWhite), np.cos(phiWhite)]])
         r_wz_w = np.matmul(C_wb,r_wz_b) # Distance TO white lane from duckiebot. This should be negative
-        if r_wz_w[1] >= 0: # Then white line is on our left. 
-            # This can occur in two situations
-            # 1) We are in the other lane
-            # 2) We are turning a right corner.
-            # In either case, it is actually the OTHER white line
-            r_dw_w = np.array([[0],[-1.5*self.laneWidth]])
-        else:
-            r_dw_w = np.array([[0],[self.laneWidth/2]])
+        # if r_wz_w[1] >= 0: # Then white line is on our left. 
+        #     # This can occur in two situations
+        #     # 1) We are in the other lane
+        #     # 2) We are turning a right corner.
+        #     # In either case, it is actually the OTHER white line
+        #     r_dw_w = np.array([[0],[-1.5*self.laneWidth]])
+        # else:
+        r_dw_w = np.array([[0],[self.laneWidth/2]])
         r_zd_w = -r_wz_w - r_dw_w
         distWhite = r_zd_w[1] # Distance TO duckiebot from desired point.
         
@@ -148,14 +148,13 @@ class simple_estimator(object):
         w = self.carCmdPrev.omega
         
         dt = float(rospy.Time.now().to_sec()) - self.previousTime # WARNING: doesnt line up with simulator
-        dt = dt/2 # SIMILATOR ADJUSTMENT... SHOULD BE REMOVED.
 
         # Predict d, phi, and pack into state
         self.d_k = self.d_k + dt*v*np.sin(self.phi_k)
         self.phi_k = self.phi_k + dt*w
         self.phi_k = (self.phi_k + np.pi) % (2 * np.pi) - np.pi
         self.x_k = np.array([[self.d_k],[self.phi_k]])
-        print('PREDICTING')
+        #print('PREDICTING')
         #print(dt*v*np.sin(self.phi_k))
         #print("d: %.2f" % self.d_k," phi: %.2f" % self.phi_k)
         # Predict Covariance
@@ -185,8 +184,8 @@ class simple_estimator(object):
         # Correct Covariance
         self.P_k = np.matmul(np.identity(2) - np.matmul(K_k,self.C_k),self.P_k)
         self.P_k = 0.5*(self.P_k + self.P_k.T)
-        print("d: %.2f" % self.d_k," phi: %.2f" % self.phi_k)
-        print('CORRECTING')
+        # print("d: %.2f" % self.d_k," phi: %.2f" % self.phi_k)
+        # print('CORRECTING')
 
     # ##########################################################################
     # ######################## VARIOUS OTHER FUNCTIONS ####################### #

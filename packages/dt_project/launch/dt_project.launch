@@ -17,7 +17,7 @@
     <arg name="IEKF_on" default="false"/>
     <arg name="custom_control_on" default="true"/>
     <arg name="custom_image_processing_on" default="false"/>
-    <arg name="simple_estimator_on" default="true"/>
+    <arg name="simple_estimator_on" default="false"/>
 
 
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->

@@ -58,10 +58,10 @@ class custom_control(object):
         
         
         # ######### SPEED CONTROL #########
-        v_bar = 1
+        v_bar = 2
         if abs(phi)> 1:
-            v_bar = 0.1
-        elif abs(phi)> 0.4:
+            v_bar = 0.2
+        elif abs(phi)> 0.5:
             v_bar = 0.3
 
         # ######## REFERENCE MODEL ######## (Could be saved in object properties)
@@ -102,9 +102,9 @@ class custom_control(object):
         u_adaptive = self.theta[0]*x_k[0] + self.theta[1]*x_k[1]
         
         # PD Controller from class...
-        k_phi = -2
+        k_phi = -2.5
         k_d = -k_phi ** 2/(4*v_bar)
-        u_PD = k_d*(x_k[0] - 0.15) + k_phi*(x_k[1] - 0.10)
+        u_PD = k_d*(x_k[0]-0.025) + k_phi*(x_k[1])
 
         # PID Controller
         kp = 10
@@ -118,11 +118,15 @@ class custom_control(object):
         if abs(u_PID) < u_max and self.fsm_state == "LANE_FOLLOWING": # Only increase integral if we arnt at the max control effort
             self.errorInt = self.errorInt - x_k[0]*T
 
+        # Pure pursiut
+        L = 0.1
+        u_PP = 2*v_bar*x_k[0]/L
 
 
         # ########## PUBLISH #############
         #u = u_adaptive
         u = u_PD
+        #u = u_PP
         #u = u_PID
         car_control_msg = Twist2DStamped()
         car_control_msg.v = v_bar
@@ -142,7 +146,7 @@ class custom_control(object):
         #print(self.x)
         #print(self.fsm_state)
         #print(self.errorInt)
-        #print("Angular Velocity: %.2f" % u," d: %.2f" % d, " phi: %.2f" % phi," v_bar: %.2f" % v_bar) 
+        print("Angular Velocity: %.2f" % u," d: %.2f" % d, " phi: %.2f" % phi," v_bar: %.2f" % v_bar) 
 
 
     # ##########################################################################
