@@ -62,10 +62,10 @@ class simple_estimator(object):
         # ######## EXTRACT ######### data from segments back into separated arrays.
         # ONLY IF THEY ARE CLOSE
         for segment in segListMsg.segments:
-            if segment.color == segment.WHITE and segment.points[0].x < 0.5:
+            if segment.color == segment.WHITE and segment.points[0].x < 0.3 and segment.points[0].y < 0.1:
                 whitePointsList.append(np.array([segment.points[0].x,segment.points[0].y]))
                 whitePointsList.append(np.array([segment.points[1].x,segment.points[1].y]))
-            if segment.color == segment.YELLOW and segment.points[0].x < 0.5:
+            if segment.color == segment.YELLOW and segment.points[0].x < 0.3 and segment.points[0].y < 0.2:
                 yellowPointsList.append(np.array([segment.points[0].x,segment.points[0].y]))
         whitePointsArray = np.array(whitePointsList)
         yellowPointsArray = np.array(yellowPointsList)
@@ -73,13 +73,13 @@ class simple_estimator(object):
 
 
         # FIT TWO LANES
-        z = self.fitTwoLanes(whitePointsArray,yellowPointsArray)
+        #z = self.fitTwoLanes(whitePointsArray,yellowPointsArray)
         #self.zTwoLane = z
-        m = z[0]
-        c = z[1]
-        zWhite = np.array([m,c])
-        zYellow = np.array([m,c + self.laneWidth*np.sqrt(m**2 + 1)/2])
-        print(z)
+        #m = z[0]
+        #c = z[1]
+        #zWhite = np.array([m,c])
+        #zYellow = np.array([m,c + self.laneWidth*np.sqrt(m**2 + 1)/2])
+        #print(z)
 
         # ######### FIT ########### straight lines to data
         wShape = np.shape(whitePointsArray)
@@ -93,10 +93,10 @@ class simple_estimator(object):
         if nWhite >= 2: # Need minimum of two points to define a line.
             # RANSAC Straight line fit
             self.ransacW.fit(np.reshape(whitePointsArray[:,0],(-1,1)),np.reshape(whitePointsArray[:,1],(-1,1)))
-            #zWhite = np.array([self.ransacW.estimator_.coef_, self.ransacW.estimator_.intercept_])
+            zWhite = np.array([self.ransacW.estimator_.coef_, self.ransacW.estimator_.intercept_])
 
             # 3rd degree polynomial
-            polyW = np.polyfit(whitePointsArray[:,0],whitePointsArray[:,1],deg=3) # Least-squares fit 3rd degree polynomial
+            #polyW = np.polyfit(whitePointsArray[:,0],whitePointsArray[:,1],deg=3) # Least-squares fit 3rd degree polynomial
 
             # Calculate d and phi from geometry
             m = np.asscalar(zWhite[0])
@@ -119,10 +119,10 @@ class simple_estimator(object):
         if nYellow >= 2:  # Need minimum of two points to define a line.
             # RANSAC straight line fit
             self.ransacY.fit(np.reshape(yellowPointsArray[:,0],(-1,1)), np.array(np.reshape(yellowPointsArray[:,1],(-1,1))))
-            #zYellow = np.array([self.ransacY.estimator_.coef_, self.ransacY.estimator_.intercept_])
+            zYellow = np.array([self.ransacY.estimator_.coef_, self.ransacY.estimator_.intercept_])
 
             # 3rd degree polynomial fit
-            polyY = np.polyfit(yellowPointsArray[:,0],yellowPointsArray[:,1],deg=3) # Least-squares fit polynomial
+            #polyY = np.polyfit(yellowPointsArray[:,0],yellowPointsArray[:,1],deg=3) # Least-squares fit polynomial
 
             # Calculate d and phi from geometry
             m = np.asscalar(zYellow[0])
@@ -136,7 +136,7 @@ class simple_estimator(object):
             distYellow = r_zd_y[1] # Distance TO duckiebot from desired point.
        
         # ######### COMBINE ###########
-        if nWhite >= 2 or nYellow >= 2:
+        if nWhite >= 2 and nYellow >= 2:
             #if abs(phiWhite - phiYellow) > 0.6: # If they disagree, pick yellow
             #    phi = phiYellow
             #    d = distYellow

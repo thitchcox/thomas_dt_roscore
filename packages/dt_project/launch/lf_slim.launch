@@ -20,7 +20,7 @@
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <arg name="gp_estimator_on" default="false"/>
     <arg name="custom_control_on" default="true"/>
-    <arg name="custom_image_processing_on" default="true"/>
+    <arg name="custom_image_processing_on" default="false"/> <!-- TODO, some error with image processing not always triggered.-->
     <arg name="simple_estimator_on" default="true"/>
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
 
@@ -30,7 +30,7 @@
 
         <!-- Line Detector -->
         <group if="$(arg /lane_following/line_detection)">
-            <group unless="$(arg custom_image_processing_on)"> <!-- Do not activate if custom image processing is on -->
+                <!-- Must remain on for some reason... the anti instagram node gets launched here i think -->
                 <remap from="line_detector_node/transform" to="anti_instagram_node/transform"/>
                 <remap from="line_detector_node/corrected_image/compressed" to="camera_node/image/compressed"/>
                 <include file="$(find line_detector)/launch/line_detector_node.launch">
@@ -39,7 +39,6 @@
                     <arg name="param_file_name" value="$(arg line_detector_param_file_name)"/>
                     <arg name="verbose" value="$(arg verbose)" />
                 </include>
-            </group>
         </group>
 
         <!-- Ground Projection -->

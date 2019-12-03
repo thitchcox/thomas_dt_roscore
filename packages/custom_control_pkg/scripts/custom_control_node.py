@@ -58,11 +58,11 @@ class custom_control(object):
         
         
         # ######### SPEED CONTROL #########
-        v_bar = 0.65
+        v_bar = 1
         if abs(phi)> 1:
             v_bar = 0.25
-        elif abs(phi)> 0.6:
-            v_bar = 0.5
+        elif abs(phi)> 0.4:
+            v_bar = 0.25
 
         # ######## REFERENCE MODEL ######## (Could be saved in object properties)
         # Critically damped gains from class
