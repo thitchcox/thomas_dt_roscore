@@ -60,9 +60,9 @@ class custom_control(object):
         # ######### SPEED CONTROL #########
         v_bar = 1
         if abs(phi)> 1:
-            v_bar = 0.25
+            v_bar = 0.1
         elif abs(phi)> 0.4:
-            v_bar = 0.25
+            v_bar = 0.3
 
         # ######## REFERENCE MODEL ######## (Could be saved in object properties)
         # Critically damped gains from class
@@ -102,9 +102,9 @@ class custom_control(object):
         u_adaptive = self.theta[0]*x_k[0] + self.theta[1]*x_k[1]
         
         # PD Controller from class...
-        k_phi = -3
+        k_phi = -2
         k_d = -k_phi ** 2/(4*v_bar)
-        u_PD = k_d*x_k[0] + k_phi*x_k[1]
+        u_PD = k_d*(x_k[0] - 0.15) + k_phi*(x_k[1] - 0.10)
 
         # PID Controller
         kp = 10
@@ -113,7 +113,7 @@ class custom_control(object):
         intMax = 1
         self.errorInt = max(min(self.errorInt,intMax),-intMax) # Anti windup
         
-        u_PID = kp*(0 - x_k[0]) + kd*(0 - x_k[1]) + ki*self.errorInt
+        u_PID = kp*(0.15 - x_k[0]) + kd*(0 - x_k[1]) + ki*self.errorInt
 
         if abs(u_PID) < u_max and self.fsm_state == "LANE_FOLLOWING": # Only increase integral if we arnt at the max control effort
             self.errorInt = self.errorInt - x_k[0]*T

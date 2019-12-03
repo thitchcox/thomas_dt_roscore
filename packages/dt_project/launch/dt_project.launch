@@ -16,7 +16,7 @@
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <arg name="IEKF_on" default="false"/>
     <arg name="custom_control_on" default="true"/>
-    <arg name="custom_image_processing_on" default="true"/>
+    <arg name="custom_image_processing_on" default="false"/>
     <arg name="simple_estimator_on" default="true"/>
 
 
@@ -138,6 +138,7 @@
     <!-- TODO need to read the right car_cmd info depending on which node is active.-->
     <group if="$(arg simple_estimator_on)">
         <remap from="simple_estimator_node/seglist_ground_projection" to="ground_projection/lineseglist_out"/>
+        <remap from="simple_estimator_node/car_cmd" to="car_cmd_switch_node/cmd"/>
         <include file="$(find simple_estimator_pkg)/launch/simple_estimator_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="param_file_name" value="default"/>

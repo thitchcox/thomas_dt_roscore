@@ -132,6 +132,7 @@
         <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
         <group if="$(arg simple_estimator_on)">
             <remap from="simple_estimator_node/seglist_ground_projection" to="ground_projection/lineseglist_out"/>
+            <remap from="simple_estimator_node/car_cmd" to="custom_control_node/car_cmd"/>
             <include file="$(find simple_estimator_pkg)/launch/simple_estimator_node.launch">
                 <arg name="veh" value="$(arg veh)"/>
                 <arg name="param_file_name" value="default"/>
