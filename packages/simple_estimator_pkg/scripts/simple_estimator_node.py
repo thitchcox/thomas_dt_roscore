@@ -143,7 +143,7 @@ class simple_estimator(object):
 
         # ######### PRINT ##########
         #" phiWhite: %.2f" % phiWhite," phiYellow: %.2f" % phiYellow,
-        print(whitePointsArray)
+        #print(whitePointsArray)
         #print(whitePointsArray)
         #print("Iter: %d" % self.testCount," nWhite: %.2f" % nWhite, " nYellow: %.2f" % nYellow," phi: %.2f" % phi," distWhite: %.2f" % distWhite," distYellow: %.2f" % distYellow," d %.2f" % d) 
     
