@@ -54,8 +54,6 @@ class custom_control(object):
         T = float(rospy.Time.now().to_sec()) - float(self.previousTime) # TO BE CHANGED MAYBE
         u_command = 0
         u_max = 8
-
-        
         
         # ######### SPEED CONTROL #########
         v_bar = 0.8

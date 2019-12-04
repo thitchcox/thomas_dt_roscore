@@ -49,9 +49,9 @@ class simple_estimator(object):
 
         # Inclusion zone for segments
         self.x_min = 0
-        self.x_max = 0.5
-        self.y_min = -0.2
-        self.y_max = 0.2
+        self.x_max = 0.3
+        self.y_min = -1
+        self.y_max = 1
 
         # NLS parameters
         self.weightYellow = 5
@@ -85,15 +85,32 @@ class simple_estimator(object):
 
         # ######## EXTRACT ######### data from segments back into separated arrays.
         whitePointsArray, yellowPointsArray = self.segList2Array(segListMsg)
+        nWhite = whitePointsArray.shape[0]
+        nYellow = yellowPointsArray.shape[0]
         print(whitePointsArray)
+
+        # ###### REMOVE LEFT LANE ######
+        if nYellow >= 2: # Need minimum of two points to define a line.
+            self.ransacY.fit(np.reshape(yellowPointsArray[:,0],(-1,1)), np.array(np.reshape(yellowPointsArray[:,1],(-1,1))))
+            zYellowOnly = np.array([self.ransacY.estimator_.coef_, self.ransacY.estimator_.intercept_])
+            whitePointsArray = self.removeLeftLane(zYellowOnly, whitePointsArray)
+        print(whitePointsArray)
+        nWhite = whitePointsArray.shape[0]
+        nYellow = yellowPointsArray.shape[0]
+
         # ###### FIT TWO LANES ########
-        z = self.fitTwoLanes(whitePointsArray,yellowPointsArray)
-        #self.zTwoLane = z
-        m = z[0]
-        c = z[1]
-        zWhite = np.array([m,c])
-        zYellow = np.array([m,c + self.laneWidth*np.sqrt(m**2 + 1)])
-        #print(z)
+        if nWhite >= 2 and nYellow >= 2: 
+            z = self.fitTwoLanes(whitePointsArray,yellowPointsArray)
+            #self.zTwoLane = z
+            m = z[0]
+            c = z[1]
+            zWhite = np.array([m,c])
+            zYellow = np.array([m,c + self.laneWidth*np.sqrt(m**2 + 1)])
+        elif nYellow >= 2:
+            zWhite = zYellowOnly
+        elif nWhite >= 2:
+            self.ransacW.fit(np.reshape(whitePointsArray[:,0],(-1,1)),np.reshape(whitePointsArray[:,1],(-1,1)))
+            zWhite = np.array([self.ransacW.estimator_.coef_, self.ransacW.estimator_.intercept_])
 
 
         # ######### Calculate d and phi from geometry ##########
@@ -103,14 +120,17 @@ class simple_estimator(object):
         r_wz_b = np.array([[-c*m/(1+m**2)],[c-(c*m**2/(1+m**2))]]) # Position vector to nearest point on the line (normal to line)
         C_wb = np.array([[np.cos(phiWhite),-np.sin(phiWhite)],[np.sin(phiWhite), np.cos(phiWhite)]])
         r_wz_w = np.matmul(C_wb,r_wz_b) # Distance TO white lane from duckiebot. This should be negative
-        # if r_wz_w[1] >= 0: # Then white line is on our left. 
-        #     # This can occur in two situations
-        #     # 1) We are in the other lane
-        #     # 2) We are turning a right corner.
-        #     # In either case, it is actually the OTHER white line
-        #     r_dw_w = np.array([[0],[-1.5*self.laneWidth]])
-        # else:
-        r_dw_w = np.array([[0],[self.laneWidth/2]])
+        if nWhite < 2 and nYellow >= 2: # Then the line we have is actually yellow
+            r_dw_w = np.array([[0],[-self.laneWidth/2]])
+        else:
+            if r_wz_w[1] >= 0: # Then white line is on our left. 
+                # This can occur in two situations
+                # 1) We are in the other lane
+                # 2) We are turning a right corner.
+                # In either case, it is actually the OTHER white line
+                r_dw_w = np.array([[0],[-1.5*self.laneWidth]])
+            else:
+                r_dw_w = np.array([[0],[self.laneWidth/2]])
         r_zd_w = -r_wz_w - r_dw_w
         distWhite = r_zd_w[1] # Distance TO duckiebot from desired point.
         
@@ -118,9 +138,14 @@ class simple_estimator(object):
         d = distWhite
 
         # ######### VISUALIZE ###########
-        pa1 = self.line2PointArray(zWhite, 0,1)
-        pa2 = self.line2PointArray(zYellow, 0,1)
-        self.visualizeCurves(pa1,pa2)
+        if nWhite >= 2 and nYellow >= 2:
+            pa1 = self.line2PointArray(zWhite, 0,1)
+            pa2 = self.line2PointArray(zYellow, 0,1)
+            self.visualizeCurves(pa1,pa2)
+        else:
+            pa1 = self.line2PointArray(zWhite, 0,1)
+            self.visualizeCurves(pa1)
+        
 
         # ###### PUBLISH LANE POSE #######
         lanePose = LanePose()
@@ -187,6 +212,19 @@ class simple_estimator(object):
         # print("d: %.2f" % self.d_k," phi: %.2f" % self.phi_k)
         # print('CORRECTING')
 
+    def removeLeftLane(self,zYellowOnly, whitePointsArray):
+        tmp = []
+        for lv1 in range(whitePointsArray.shape[0]):
+            m = zYellowOnly[0]
+            c = zYellowOnly[1]
+            x = whitePointsArray[lv1][0]
+            # Check if y value is larger than yellow line fit.
+            if whitePointsArray[lv1][1] < m*x + c:
+                tmp.append(whitePointsArray[lv1,:])
+        return np.array(tmp)
+
+
+
     # ##########################################################################
     # ######################## VARIOUS OTHER FUNCTIONS ####################### #
     # ##########################################################################
@@ -204,7 +242,8 @@ class simple_estimator(object):
                 dx = segment.points[0].x - segment.points[1].x
                 dy = segment.points[0].y - segment.points[1].y 
                 L = np.sqrt(dx ** 2 + dy ** 2)
-                whitePointsList.append(np.array([segment.points[0].x,segment.points[0].y,L]))
+                m = dy/dx
+                whitePointsList.append(np.array([segment.points[0].x,segment.points[0].y,L,m]))
                 #whitePointsList.append(np.array([segment.points[1].x,segment.points[1].y]))
             if segment.color == segment.YELLOW\
                 and segment.points[0].x < self.x_max and segment.points[0].x > self.x_min\
@@ -212,7 +251,8 @@ class simple_estimator(object):
                 dx = segment.points[0].x - segment.points[1].x
                 dy = segment.points[0].y - segment.points[1].y 
                 L = np.sqrt(dx ** 2 + dy ** 2)
-                yellowPointsList.append(np.array([segment.points[0].x,segment.points[0].y,L]))
+                m = dy/dx
+                yellowPointsList.append(np.array([segment.points[0].x,segment.points[0].y,L,m]))
         whitePointsArray = np.array(whitePointsList)
         yellowPointsArray = np.array(yellowPointsList)
 
@@ -228,12 +268,12 @@ class simple_estimator(object):
             z = np.array([0,-self.laneWidth/2])
 
         return z
+        
 
     def errorTwoLanes(self, coeffs, wData, yData):
         m = coeffs[0]
         c = coeffs[1]
         L = self.laneWidth
-
 
         if wData.shape[0] > 0:
             xWhite = wData[:,0]
@@ -268,7 +308,7 @@ class simple_estimator(object):
             xYellow = yData[:,0]
             jacYm = np.reshape(-xYellow + L*m/(np.sqrt(m**2 + 1)),(-1,1))
             jacYc = np.reshape(-np.ones(xYellow.shape),(-1,1))
-            jacY = self.weightYellow*np.hstack((jacYm, jacYc))
+            jacY = np.hstack((jacYm, jacYc))
 
         if yData.shape[0] > 0 and wData.shape[0]>0:
             jac = np.vstack((jacW, jacY))
