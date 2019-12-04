@@ -91,22 +91,11 @@ class LanePointDetector(dtu.Configurable, LineDetectorInterface):
         # Identify Shi-Tomasi keypoints in the greyscale image
         kps = cv2.goodFeaturesToTrack(self.gray, self.max_corners, quality_level, \
             min_distance, mask=mask, blockSize=block_size)
-        if kps is None:
+        if kps is not None:
+            kps = np.squeeze(kps)
+        else:
             kps = []
-        # Squeeze to 2D array to get rid of extra brace
-        return np.squeeze(kps)
-
-
-    def _fakeReturns(self, kps):
-        # Fake the data needed by the segment list
-        # Store the keypoints as the FIRST endpoint of the line
-        # Offset original kp by a small (pixel) amount to form second endpoint
-        lines = np.hstack((kps, kps - 1))
-        # Store normals as a bunch of zeros
-        normals = np.zeros((len(kps), 2))
-        # Store centres as a bunch of zeros
-        centres = np.zeros((len(kps), 2))
-        return lines, normals, centres
+        return kps
 
 
     def _getLines(self, mask):
@@ -137,7 +126,6 @@ class LanePointDetector(dtu.Configurable, LineDetectorInterface):
             lines = []
         # Fake the normals and centres, we don't use these
         normals = np.zeros((len(lines), 2))
-        # Store centres as a bunch of zeros
         centres = np.zeros((len(lines), 2))
         return lines, normals, centres
 
@@ -146,14 +134,24 @@ class LanePointDetector(dtu.Configurable, LineDetectorInterface):
         with dtu.timeit_clock('_getMask'):
             mask = self._getMask(color)
         # Detect yellow points using ST keypoints.
-        if color == 'yellow':
-            with dtu.timeit_clock('_getKeypoints'):
-                kps = self._getKeypoints(mask, color)
-            with dtu.timeit_clock('_fakeReturns'):
-                lines, normals, centers = self._fakeReturns(kps)
+        # if color == 'yellow':
+        #     # Default keypoints
+        #     lines = []
+        #     normals = []
+        #     centers = []
+        #     with dtu.timeit_clock('_getKeypoints'):
+        #         kps = self._getKeypoints(mask, color)
+        #         # If kps available, package up lines
+        #         if len(kps) > 0:
+        #             # KP info is stored in [0:1], add +2 for visualization
+        #             lines = np.hstack((kps, kps / 2)).astype('int32')
+        #             # Fake the normals and centres, we don't use these
+        #             normals = np.zeros((len(lines), 2))
+        #             centers = np.zeros((len(lines), 2))
+
         # Detect white points using prob. Hough lines
         # Also for red points, for now
-        if color == 'white' or color == 'red':
+        if color == 'white' or color == 'red' or color == 'yellow':
             with dtu.timeit_clock('_getLines'):
                 lines, normals, centers = self._getLines(mask)
         return Detections(lines=lines, normals=normals, area=mask, centers=centers)
