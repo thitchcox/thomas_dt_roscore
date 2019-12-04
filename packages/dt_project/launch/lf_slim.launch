@@ -55,14 +55,14 @@
 
         <!-- Lane Filter -->
         <group if="$(arg /lane_following/lane_filter)">
-            <group unless="$(arg simple_estimator_on)"> <!-- Do not activate if simple estimator is on. TODO also dont if Thomas' estimator is on -->
-                <remap from="lane_filter_node/segment_list" to="ground_projection/lineseglist_out"/>
-                <remap from="lane_filter_node/car_cmd" to="/$(arg veh)/car_cmd"/>
-                <include file="$(find lane_filter)/launch/lane_filter_node.launch">
-                    <arg name="veh" value="$(arg veh)"/>
-                    <arg name="param_file_name" value="$(arg param_file_name)"/>
-                </include>
-            </group>
+            <!--<group unless="$(arg simple_estimator_on)">  Do not activate if simple estimator is on. TODO also dont if Thomas' estimator is on -->
+            <remap from="lane_filter_node/segment_list" to="ground_projection/lineseglist_out"/>
+            <remap from="lane_filter_node/car_cmd" to="/$(arg veh)/car_cmd"/>
+            <include file="$(find lane_filter)/launch/lane_filter_node.launch">
+                <arg name="veh" value="$(arg veh)"/>
+                <arg name="param_file_name" value="$(arg param_file_name)"/>
+            </include>
+            <!-- </group> -->
         </group>
 
         <!-- Lane controller -->
@@ -133,6 +133,7 @@
         <group if="$(arg simple_estimator_on)">
             <remap from="simple_estimator_node/seglist_ground_projection" to="ground_projection/lineseglist_out"/>
             <remap from="simple_estimator_node/car_cmd" to="custom_control_node/car_cmd"/>
+            <remap from="simple_estimator_node/baseline_pose" to="lane_filter_node/lane_pose"/>
             <include file="$(find simple_estimator_pkg)/launch/simple_estimator_node.launch">
                 <arg name="veh" value="$(arg veh)"/>
                 <arg name="param_file_name" value="default"/>

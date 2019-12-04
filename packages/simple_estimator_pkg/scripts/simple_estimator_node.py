@@ -33,6 +33,7 @@ class simple_estimator(object):
 
         # Subscriptions
         self.subSeglistGroundProjection = rospy.Subscriber("~seglist_ground_projection",SegmentList, self.updateEstimate, queue_size=1)
+        self.sub_baseline_pose = rospy.Subscriber("~baseline_pose",LanePose, self.updateAverage, queue_size=1)
         self.sub_velocity = rospy.Subscriber("~car_cmd", Twist2DStamped, self.predict)
         #self.sub_fsm_mode = rospy.Subscriber("~fsm_mode", FSMState, self.cbMode, queue_size=1)
 
@@ -67,6 +68,10 @@ class simple_estimator(object):
         self.A_k = np.array([[1,0],[0,1]])
         self.B_k = np.array([[0],[0]])
         self.C_k = np.identity(2)
+
+        # Baseline pose
+        self.d_baseline = 0
+        self.phi_baseline = 0
 
         self.P_k = 5*np.identity(2)
         self.Q = np.array([[1,0],[0,1]])
@@ -153,14 +158,16 @@ class simple_estimator(object):
         # ###### PUBLISH LANE POSE #######
         lanePose = LanePose()
         lanePose.header.stamp = segListMsg.header.stamp
-        lanePose.d = np.asscalar(d)
-        lanePose.phi = np.asscalar(phi)
+
+        # Complimentary filter lol
+        lanePose.d = 0.8*np.asscalar(d) + 0.2*self.d_baseline
+        lanePose.phi = 0.8*np.asscalar(phi) + 0.2*self.phi_baseline
         lanePose.in_lane = True
         lanePose.status = lanePose.NORMAL
 
-        self.correct(lanePose) # Kalman Filter Modifications
-        lanePose.d = np.asscalar(self.x_k[0][0])
-        lanePose.phi = np.asscalar(self.x_k[1][0])
+        #self.correct(lanePose) # Kalman Filter Modifications
+        #lanePose.d = np.asscalar(self.x_k[0][0])
+        #lanePose.phi = np.asscalar(self.x_k[1][0])
         self.pub_lane_pose.publish(lanePose)
 
         # ######### PRINT ##########
@@ -170,7 +177,10 @@ class simple_estimator(object):
         #print(whitePointsArray)
         #print(whitePointsArray)
         #print("Iter: %d" % self.testCount," phi: %.2f" % phi," d %.2f" % d) 
-    
+    def updateAverage(self,lanePoseMsg):
+        self.d_baseline = lanePoseMsg.d 
+        self.phi_baseline = lanePoseMsg.phi
+        #print(self.phi_baseline)
     def predict(self,carCmdMsg):
         v = self.carCmdPrev.v 
         w = self.carCmdPrev.omega
