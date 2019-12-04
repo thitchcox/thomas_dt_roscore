@@ -87,14 +87,13 @@ class simple_estimator(object):
         whitePointsArray, yellowPointsArray = self.segList2Array(segListMsg)
         nWhite = whitePointsArray.shape[0]
         nYellow = yellowPointsArray.shape[0]
-        print(whitePointsArray)
+        
 
         # ###### REMOVE LEFT LANE ######
         if nYellow >= 2: # Need minimum of two points to define a line.
             self.ransacY.fit(np.reshape(yellowPointsArray[:,0],(-1,1)), np.array(np.reshape(yellowPointsArray[:,1],(-1,1))))
             zYellowOnly = np.array([self.ransacY.estimator_.coef_, self.ransacY.estimator_.intercept_])
             whitePointsArray = self.removeLeftLane(zYellowOnly, whitePointsArray)
-        print(whitePointsArray)
         nWhite = whitePointsArray.shape[0]
         nYellow = yellowPointsArray.shape[0]
 
