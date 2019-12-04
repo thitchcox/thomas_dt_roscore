@@ -75,7 +75,7 @@ class simple_estimator(object):
 
         self.P_k = 5*np.identity(2)
         self.Q = np.array([[1,0],[0,1]])
-        self.R = 2.5*np.identity(2)
+        self.R = np.identity(2)
 
         self.testCount = 0
 
@@ -165,9 +165,9 @@ class simple_estimator(object):
         lanePose.in_lane = True
         lanePose.status = lanePose.NORMAL
 
-        #self.correct(lanePose) # Kalman Filter Modifications
-        #lanePose.d = np.asscalar(self.x_k[0][0])
-        #lanePose.phi = np.asscalar(self.x_k[1][0])
+        self.correct(lanePose) # Kalman Filter Modifications
+        lanePose.d = np.asscalar(self.x_k[0][0])
+        lanePose.phi = np.asscalar(self.x_k[1][0])
         self.pub_lane_pose.publish(lanePose)
 
         # ######### PRINT ##########

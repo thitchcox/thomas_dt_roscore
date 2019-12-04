@@ -63,7 +63,7 @@ class custom_control(object):
         elif abs(phi) > 0.3:
             v_bar = 0.4
         elif abs(phi) > 0.2:
-            v_bar = 0.5
+            v_bar = 0.6
         else:
             v_bar = 1
 
