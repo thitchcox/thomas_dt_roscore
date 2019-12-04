@@ -70,8 +70,8 @@ class simple_estimator(object):
         self.C_k = np.identity(2)
 
         # Baseline pose
-        self.d_baseline = 0
-        self.phi_baseline = 0
+        self.d_baseline = 0.0
+        self.phi_baseline = 0.0
 
         self.P_k = 5*np.identity(2)
         self.Q = np.array([[1,0],[0,1]])
@@ -160,8 +160,8 @@ class simple_estimator(object):
         lanePose.header.stamp = segListMsg.header.stamp
 
         # Complimentary filter lol
-        lanePose.d = 0.8*np.asscalar(d) + 0.2*self.d_baseline
-        lanePose.phi = 0.8*np.asscalar(phi) + 0.2*self.phi_baseline
+        lanePose.d = 0.8*np.asscalar(d) + 0.2*float(self.d_baseline)
+        lanePose.phi = 0.8*np.asscalar(phi) + 0.2*float(self.phi_baseline)
         lanePose.in_lane = True
         lanePose.status = lanePose.NORMAL
 
