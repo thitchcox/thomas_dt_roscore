@@ -110,7 +110,7 @@ class simple_estimator(object):
         elif nWhite >= 2:
             self.ransacW.fit(np.reshape(whitePointsArray[:,0],(-1,1)),np.reshape(whitePointsArray[:,1],(-1,1)))
             zWhite = np.array([self.ransacW.estimator_.coef_, self.ransacW.estimator_.intercept_])
-       
+            
 
         if nWhite >=2 or nYellow >= 2:
             # ######### Calculate d and phi from geometry ##########
@@ -158,9 +158,9 @@ class simple_estimator(object):
         lanePose.in_lane = True
         lanePose.status = lanePose.NORMAL
 
-        self.correct(lanePose)
-        lanePose.d = np.asscalar(self.x_k[0][0])
-        lanePose.phi = np.asscalar(self.x_k[1][0])
+        #self.correct(lanePose)
+        #lanePose.d = np.asscalar(self.x_k[0][0])
+        #lanePose.phi = np.asscalar(self.x_k[1][0])
         self.pub_lane_pose.publish(lanePose)
 
         # ######### PRINT ##########

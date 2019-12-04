@@ -61,11 +61,11 @@ class custom_control(object):
         elif abs(phi)> 0.6:
             v_bar = 0.2
         elif abs(phi) > 0.3:
-            v_bar = 0.3
+            v_bar = 0.2
         elif abs(phi) > 0.2:
             v_bar = 0.4
         else:
-            v_bar = 5
+            v_bar = 0.5
 
         # ######## REFERENCE MODEL ######## (Could be saved in object properties)
         # Critically damped gains from class
