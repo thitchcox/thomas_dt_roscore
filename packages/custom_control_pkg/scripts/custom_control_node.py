@@ -63,9 +63,9 @@ class custom_control(object):
         elif abs(phi) > 0.3:
             v_bar = 0.2
         elif abs(phi) > 0.2:
-            v_bar = 0.4
-        else:
             v_bar = 0.5
+        else:
+            v_bar = 0.75
 
         # ######## REFERENCE MODEL ######## (Could be saved in object properties)
         # Critically damped gains from class
@@ -105,7 +105,7 @@ class custom_control(object):
         u_adaptive = self.theta[0]*x_k[0] + self.theta[1]*x_k[1]
         
         # PD Controller from class...
-        k_phi = -4.5
+        k_phi = -2
         k_d = -k_phi ** 2/(4*v_bar)
         u_PD = k_d*(x_k[0]-0.025) + k_phi*(x_k[1])
 

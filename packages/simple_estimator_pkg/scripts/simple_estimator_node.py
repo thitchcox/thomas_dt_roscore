@@ -70,7 +70,7 @@ class simple_estimator(object):
 
         self.P_k = 5*np.identity(2)
         self.Q = np.array([[1,0],[0,1]])
-        self.R = 3.5*np.identity(2)
+        self.R = 2.5*np.identity(2)
 
         self.testCount = 0
 
@@ -89,7 +89,7 @@ class simple_estimator(object):
         nYellow = yellowPointsArray.shape[0]
         
 
-        # ###### REMOVE LEFT LANE ######
+        # ###### REMOVE WHITE POINTS OF LEFT LANE ######
         if nYellow >= 2: # Need minimum of two points to define a line.
             self.ransacY.fit(np.reshape(yellowPointsArray[:,0],(-1,1)), np.array(np.reshape(yellowPointsArray[:,1],(-1,1))))
             zYellowOnly = np.array([self.ransacY.estimator_.coef_, self.ransacY.estimator_.intercept_])
@@ -145,7 +145,7 @@ class simple_estimator(object):
             pa1 = self.line2PointArray(zWhite, 0,1)
             pa2 = self.line2PointArray(zYellow, 0,1)
             self.visualizeCurves(pa1,pa2)
-        else:
+        elif nWhite >= 2 or nYellow >= 2:
             pa1 = self.line2PointArray(zWhite, 0,1)
             self.visualizeCurves(pa1)
         
@@ -158,9 +158,9 @@ class simple_estimator(object):
         lanePose.in_lane = True
         lanePose.status = lanePose.NORMAL
 
-        #self.correct(lanePose)
-        #lanePose.d = np.asscalar(self.x_k[0][0])
-        #lanePose.phi = np.asscalar(self.x_k[1][0])
+        self.correct(lanePose) # Kalman Filter Modifications
+        lanePose.d = np.asscalar(self.x_k[0][0])
+        lanePose.phi = np.asscalar(self.x_k[1][0])
         self.pub_lane_pose.publish(lanePose)
 
         # ######### PRINT ##########
@@ -265,7 +265,8 @@ class simple_estimator(object):
         z0 = self.zTwoLane
         z = z0
         if yData.shape[0] > 0 or wData.shape[0]>0:
-            res = sp.optimize.least_squares(lambda x: self.errorTwoLanes(x,wData,yData), z0, lambda x: self.jacTwoLanes(x,wData,yData))
+            #, lambda x: self.jacTwoLanes(x,wData,yData)
+            res = sp.optimize.least_squares(lambda x: self.errorTwoLanes(x,wData,yData), z0)
             z = res.x
         else:
             z = np.array([0,-self.laneWidth/2])
@@ -309,8 +310,8 @@ class simple_estimator(object):
 
         if yData.shape[0] > 0:    
             xYellow = yData[:,0]
-            jacYm = np.reshape(-xYellow + L*m/(np.sqrt(m**2 + 1)),(-1,1))
-            jacYc = np.reshape(-np.ones(xYellow.shape),(-1,1))
+            jacYm = self.weightYellow*np.reshape(-xYellow + L*m/(np.sqrt(m**2 + 1)),(-1,1))
+            jacYc = self.weightYellow*np.reshape(-np.ones(xYellow.shape),(-1,1))
             jacY = np.hstack((jacYm, jacYc))
 
         if yData.shape[0] > 0 and wData.shape[0]>0:
