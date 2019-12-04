@@ -110,31 +110,35 @@ class simple_estimator(object):
         elif nWhite >= 2:
             self.ransacW.fit(np.reshape(whitePointsArray[:,0],(-1,1)),np.reshape(whitePointsArray[:,1],(-1,1)))
             zWhite = np.array([self.ransacW.estimator_.coef_, self.ransacW.estimator_.intercept_])
+       
 
-
-        # ######### Calculate d and phi from geometry ##########
-        m = np.asscalar(zWhite[0])
-        c = np.asscalar(zWhite[1])
-        phiWhite = np.arcsin(-m/(np.sqrt(1 + m**2)))
-        r_wz_b = np.array([[-c*m/(1+m**2)],[c-(c*m**2/(1+m**2))]]) # Position vector to nearest point on the line (normal to line)
-        C_wb = np.array([[np.cos(phiWhite),-np.sin(phiWhite)],[np.sin(phiWhite), np.cos(phiWhite)]])
-        r_wz_w = np.matmul(C_wb,r_wz_b) # Distance TO white lane from duckiebot. This should be negative
-        if nWhite < 2 and nYellow >= 2: # Then the line we have is actually yellow
-            r_dw_w = np.array([[0],[-self.laneWidth/2]])
-        else:
-            if r_wz_w[1] >= 0: # Then white line is on our left. 
-                # This can occur in two situations
-                # 1) We are in the other lane
-                # 2) We are turning a right corner.
-                # In either case, it is actually the OTHER white line
-                r_dw_w = np.array([[0],[-1.5*self.laneWidth]])
+        if nWhite >=2 or nYellow >= 2:
+            # ######### Calculate d and phi from geometry ##########
+            m = np.asscalar(zWhite[0])
+            c = np.asscalar(zWhite[1])
+            phiWhite = np.arcsin(-m/(np.sqrt(1 + m**2)))
+            r_wz_b = np.array([[-c*m/(1+m**2)],[c-(c*m**2/(1+m**2))]]) # Position vector to nearest point on the line (normal to line)
+            C_wb = np.array([[np.cos(phiWhite),-np.sin(phiWhite)],[np.sin(phiWhite), np.cos(phiWhite)]])
+            r_wz_w = np.matmul(C_wb,r_wz_b) # Distance TO white lane from duckiebot. This should be negative
+            if nWhite < 2 and nYellow >= 2: # Then the line we have is actually yellow
+                r_dw_w = np.array([[0],[-self.laneWidth/2]])
             else:
-                r_dw_w = np.array([[0],[self.laneWidth/2]])
-        r_zd_w = -r_wz_w - r_dw_w
-        distWhite = r_zd_w[1] # Distance TO duckiebot from desired point.
-        
-        phi = phiWhite
-        d = distWhite
+                if r_wz_w[1] >= 0: # Then white line is on our left. 
+                    # This can occur in two situations
+                    # 1) We are in the other lane
+                    # 2) We are turning a right corner.
+                    # In either case, it is actually the OTHER white line
+                    r_dw_w = np.array([[0],[-1.5*self.laneWidth]])
+                else:
+                    r_dw_w = np.array([[0],[self.laneWidth/2]])
+            r_zd_w = -r_wz_w - r_dw_w
+            distWhite = r_zd_w[1] # Distance TO duckiebot from desired point.
+            
+            phi = phiWhite
+            d = distWhite
+        else:
+            d = 0
+            phi = 0
 
         # ######### VISUALIZE ###########
         if nWhite >= 2 and nYellow >= 2:
