@@ -70,7 +70,7 @@ class simple_estimator(object):
 
         self.P_k = 5*np.identity(2)
         self.Q = np.array([[1,0],[0,1]])
-        self.R = 5*np.identity(2)
+        self.R = 3.5*np.identity(2)
 
         self.testCount = 0
 
