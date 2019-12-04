@@ -160,8 +160,8 @@ class simple_estimator(object):
         lanePose.header.stamp = segListMsg.header.stamp
 
         # Complimentary filter lol
-        lanePose.d = 0.8*np.asscalar(d) + 0.2*float(self.d_baseline)
-        lanePose.phi = 0.8*np.asscalar(phi) + 0.2*float(self.phi_baseline)
+        lanePose.d = 0.8*float(d) + 0.2*float(self.d_baseline)
+        lanePose.phi = 0.8*float(phi) + 0.2*float(self.phi_baseline)
         lanePose.in_lane = True
         lanePose.status = lanePose.NORMAL
 

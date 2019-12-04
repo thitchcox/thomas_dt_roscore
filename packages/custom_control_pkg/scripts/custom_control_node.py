@@ -56,18 +56,18 @@ class custom_control(object):
         u_max = 8
         
         # ######### SPEED CONTROL #########
-        if abs(phi)> 1:
-            v_bar = 0.1
+        if abs(phi)> 1.0:
+            v_bar = 0.0
         elif abs(phi)> 0.6:
-            v_bar = 0.2
+            v_bar = 0.05
         elif abs(phi) > 0.3:
-            v_bar = 0.35
+            v_bar = 0.1
         elif abs(phi) > 0.2:
-            v_bar = 0.5
-        elif abs(phi) <= 0.2 and abs(d) < 0.05:
-            v_bar = 2.5
+            v_bar = 0.3
+        elif abs(phi) <= 0.2:
+            v_bar = 0.4
         else:
-            v_bar = 1
+            v_bar = 0.4
 
         # ######## REFERENCE MODEL ######## (Could be saved in object properties)
         # Critically damped gains from class
@@ -106,8 +106,8 @@ class custom_control(object):
         # ############ CONTROL ############
         u_adaptive = self.theta[0]*x_k[0] + self.theta[1]*x_k[1]
         
-        # PD Controller from class...
-        k_phi = -3
+        # PD Controller from class
+        k_phi = -2
         k_d = -k_phi ** 2/(4*v_bar)
         u_PD = k_d*(x_k[0]-0.025) + k_phi*(x_k[1])
 
@@ -117,11 +117,10 @@ class custom_control(object):
         ki = 0.3
         intMax = 1
         self.errorInt = max(min(self.errorInt,intMax),-intMax) # Anti windup
-        
         u_PID = kp*(0.15 - x_k[0]) + kd*(0 - x_k[1]) + ki*self.errorInt
-
         if abs(u_PID) < u_max and self.fsm_state == "LANE_FOLLOWING": # Only increase integral if we arnt at the max control effort
             self.errorInt = self.errorInt - x_k[0]*T
+
 
         # Pure pursiut
         L = 0.1
