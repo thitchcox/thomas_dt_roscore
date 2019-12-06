@@ -14,9 +14,9 @@
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
     <!-- TOGGLE PROJECT ELEMENTS ON AND OFF -->
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
-    <arg name="IEKF_on" default="true"/>
-    <arg name="custom_control_on" default="true"/>
-    <arg name="custom_image_processing_on" default="false"/>
+    <arg name="IEKF_on" default="false"/>
+    <arg name="custom_control_on" default="false"/>
+    <arg name="custom_image_processing_on" default="true"/>
 
 
     <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
@@ -27,17 +27,6 @@
 		<arg name="veh" value="$(arg veh)"/>
 		<arg name="param_file_name" value="$(arg param_file_name)"/>
 	</include>
-
-	<!-- car_cmd_switch_node -->
-    <!-- Subscribe to either the car_cmd coming from lane_controller_node
-    (default) or dt_project_lane_controller_node (project) -->
-	<remap if="$(arg custom_control_on)"
-        from="car_cmd_switch_node/cmd_lane_following"
-        to="dt_project_lane_controller_node/lane_control"/>
-    <remap unless="$(arg custom_control_on)"
-        from="car_cmd_switch_node/cmd_lane_following"
-        to="lane_controller_node/lane_control"/>
-
 
     <!-- logic_gate_node -->
 	<include file="$(find fsm)/launch/logic_gate_node.launch">
@@ -167,6 +156,7 @@
             to="lane_filter_node/lane_pose"/>        
         <!-- Standard remaps -->
 		<remap from="custom_control_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed" />
+        <remap from="custom_control_node/fsm_mode" to="fsm_node/mode"/>
 		<include file="$(find custom_control_pkg)/launch/custom_control_node.launch">
 			<arg name="veh" value="$(arg veh)"/>
 			<arg name="param_file_name" value="$(arg param_file_name)"/>

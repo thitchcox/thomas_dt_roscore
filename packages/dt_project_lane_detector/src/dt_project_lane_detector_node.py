@@ -17,11 +17,11 @@ from dt_project_lane_detector.line_detector_plot import color_segment, drawLines
 import numpy as np
 
 
-class LineDetectorNode(object):
+class LanePointDetectorNode(object):
     def __init__(self):
-        self.node_name = "LineDetectorNode"
+        self.node_name = "LanePointDetectorNode"
 
-        # Constructor of line detector
+        # Constructor of lane point detector
         self.bridge = CvBridge()
 
         self.active = True
@@ -168,7 +168,6 @@ class LineDetectorNode(object):
         self.detector_used.setImage(image_cv)
 
         # Detect lines and normals
-
         white = self.detector_used.detectLines('white')
         yellow = self.detector_used.detectLines('yellow')
         red = self.detector_used.detectLines('red')
@@ -268,7 +267,7 @@ class Stats():
 
     def received(self):
         if self.nreceived == 0 and self.nresets == 1:
-            rospy.loginfo('line_detector_node received first image.')
+            rospy.loginfo('lane_point_detector_node received first image.')
         self.nreceived += 1
 
     def skipped(self):
@@ -276,7 +275,7 @@ class Stats():
 
     def processed(self):
         if self.nprocessed == 0 and self.nresets == 1:
-            rospy.loginfo('line_detector_node processing first image.')
+            rospy.loginfo('lane_point_detector_node processing first image.')
 
         self.nprocessed += 1
 
@@ -302,7 +301,7 @@ class Stats():
 
 
 if __name__ == '__main__':
-    rospy.init_node('line_detector',anonymous=False)
-    line_detector_node = LineDetectorNode()
-    rospy.on_shutdown(line_detector_node.onShutdown)
+    rospy.init_node('lane_point_detector',anonymous=False)
+    lane_point_detector_node = LanePointDetectorNode()
+    rospy.on_shutdown(lane_point_detector_node.onShutdown)
 rospy.spin()
