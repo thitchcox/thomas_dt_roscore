@@ -50,9 +50,9 @@ class simple_estimator(object):
 
         # Inclusion zone for segments
         self.x_min = 0
-        self.x_max = 0.3
-        self.y_min = -0.4
-        self.y_max = 0.4
+        self.x_max = 0.4
+        self.y_min = -0.5
+        self.y_max = 0.5
 
         # NLS parameters
         self.weightYellow = 5
