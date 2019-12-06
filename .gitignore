@@ -2,3 +2,5 @@ training_data
 *.jpg
 *.png
 *.asv
+*.m~
+*.pyc

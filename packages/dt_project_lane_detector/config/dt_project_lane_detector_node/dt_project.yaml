@@ -5,13 +5,14 @@ top_cutoff: 50
 # and the second should be the parameters.
 # The class should be an abstract instance of LineDetectorInterface
 detector:
-  - line_detector.LineDetectorHSV
+  - dt_project_lane_detector.LanePointDetector
   - configuration:
-      dilation_kernel_size: 3
-      canny_thresholds: [80,200]
-      hough_threshold: 2
-      hough_min_line_length: 3
-      hough_max_line_gap:    1
+    # Default parameters
+    #   dilation_kernel_size: 3
+    #   canny_thresholds: [80,200]
+    #   hough_threshold: 2
+    #   hough_min_line_length: 3
+    #   hough_max_line_gap:    1
 
       hsv_white1:  [0,0,150]
       hsv_white2:  [180,100,255]
@@ -24,18 +25,28 @@ detector:
 
       # DT PROJECT PARAMETERS
       # Smoothing filter parameters
-    #   bilateral_pixel_neighbourhood: 7
-    #   bilateral_sigma_color: 75
-    #   bilateral_sigma_space: 75
+      bilateral_pixel_neighbourhood: 7
+      bilateral_sigma_color: 75
+      bilateral_sigma_space: 75
      
-    #   # Harris corner parameters
-    #   harris_block_size: 5
-    #   harris_aperature_size: 7
-    #   harris_k: 0.04
-    #   harris_thresh: 75
+      # Shi-Tomasi corner parameters
+      max_corners: 50
+      yellow_quality_level: 0.01
+      yellow_min_distance: 5
+      yellow_block_size: 7
+      
+      white_quality_level: 0.001
+      white_min_distance: 10
+      white_block_size: 15
+      
+      # TODO : Set these values
+      red_quality_level: 0.001
+      red_min_distance: 10
+      red_block_size: 15
+
 
 detector_intersection:
- - line_detector.LineDetectorHSV
+ - dt_project_lane_detector.LineDetectorHSV
  - configuration:
      dilation_kernel_size: 3
      canny_thresholds: [80,200]

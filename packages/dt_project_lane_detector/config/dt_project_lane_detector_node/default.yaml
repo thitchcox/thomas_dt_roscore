@@ -5,7 +5,7 @@ top_cutoff: 40
 # and the second should be the parameters.
 # The class should be an abstract instance of LineDetectorInterface
 detector:
-  - line_detector.LineDetectorHSV
+  - dt_project_lane_detector.LineDetectorHSV
   - configuration:
       dilation_kernel_size: 3
       canny_thresholds: [80,200]
@@ -23,7 +23,7 @@ detector:
       hsv_red4:    [180,255,255]
 
 detector_intersection:
- - line_detector.LineDetectorHSV
+ - dt_project_lane_detector.LineDetectorHSV
  - configuration:
      dilation_kernel_size: 3
      canny_thresholds: [80,200]
