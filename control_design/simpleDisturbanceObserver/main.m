@@ -17,7 +17,7 @@ C_aug = [C,[0;0]];
 K_obs = place(A_aug.', C_aug.', [-2;-2;-4]).';
 
 % Control design
-k_theta = 5;
+k_theta = 2.5;
 %K_cont = place(A,B,[-1;-2]);
 K_cont = [k_theta^2/(4*v_bar), k_theta];
 
