@@ -1,12 +1,15 @@
+clearvars
+close all
+
 v_bar = 1;
 
 % Reference model
-omega_r = 5/v_bar;
+omega_r = 10/v_bar;
 zeta_r = 1;
 k_d = -10;
 k_p = -k_d^2/(4*v_bar);
-%params.A_r = v_bar*[0, 1; -omega_r^2, -2*zeta_r*omega_r];
-params.A_r = [0, v_bar; k_p, k_d];
+params.A_r = v_bar*[0, 1; -omega_r^2, -2*zeta_r*omega_r];
+%params.A_r = [0, 1; k_p, k_d];
 params.B_r = [0; 1];
 params.C_r = eye(2);
 params.D_r = 0;
@@ -23,9 +26,9 @@ params.D = 0;
 
 
 %% Simulate
-x_0 = [1;0;1;0;-5;-0.2;1];
-t_span = linspace(0,100, 500);
-[u,t] = gensig('square',2,100,0.01);
+x_0 = [1;0;1;0;3;4;3];
+t_span = linspace(0,25, 500);
+[u,t] = gensig('square',2,40,0.01);
 u_table = [t,u*1];
 %u_table = [0,0; 10000,0];
 
@@ -40,14 +43,14 @@ figure(1)
 plot(t1,x1(:,3),'LineWidth',2,'Color','black','LineStyle','--')
 hold on
 plot(t2,x2(:,1),'LineWidth',2,'color','red')
-plot(t1, x1(:,1),'LineWidth',2,'color','blue')
+%plot(t1, x1(:,1),'LineWidth',2,'color','blue')
 hold off
 grid on
 ylabel('$d$','interpreter','latex','FontSize',14)
 xlabel('Time (s)','interpreter','latex','FontSize',14)
 title('Adaptive Control')
-legend('Adaptive control','Reference Model Response')
-%axis([-inf inf -0.5 1.5 ])
+legend('Reference Model Response','Adaptive control')
+axis([-inf inf -0.5 1.5 ])
 figure(2)
 plot(t1, x2(:,5:7))
 
