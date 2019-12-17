@@ -93,7 +93,7 @@ class simple_estimator(object):
         nWhite = whitePointsArray.shape[0]
         nYellow = yellowPointsArray.shape[0]
         
-        print(whitePointsArray)
+       #print(whitePointsArray)
         # ###### REMOVE WHITE POINTS OF LEFT LANE ######
         if nYellow >= 2: # Need minimum of two points to define a line.
             self.ransacY.fit(np.reshape(yellowPointsArray[:,0],(-1,1)), np.array(np.reshape(yellowPointsArray[:,1],(-1,1))))
@@ -389,9 +389,9 @@ class simple_estimator(object):
                 marker.points.append(seg.points[0])
                 marker.points.append(seg.points[1])
                 if count == 1:
-                    color = ColorRGBA(r=1.0,g=1.0,b=1.0,a=1.0)
+                    color = ColorRGBA(r=0.8,g=0.8,b=0.8,a=1.0)
                 elif count == 2:
-                    color = ColorRGBA(r=0.0,g=1.0,b=1.0,a=1.0)
+                    color = ColorRGBA(r=1,g=0.5,b=0,a=1.0)
                 else:
                     color = ColorRGBA(r=1,g=0, b=0,a=1.0)
                 marker.colors.append(color)

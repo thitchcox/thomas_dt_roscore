@@ -43,7 +43,7 @@ class custom_control(object):
         self.x_hat = np.array([[0],[0],[0]])
         self.y = np.array([[0],[0]])
         self.K_obs = np.array([[0.2,0.3],[0,0.5],[0,0.02]])
-        self.k_trim_actual = 0
+        self.k_trim_actual = 0.2
         
         # ##################################
 
@@ -59,16 +59,16 @@ class custom_control(object):
         dt = float(rospy.Time.now().to_sec()) - float(self.previousTime) # TO BE CHANGED MAYBE
         u_command = 0
         u_max = 8
-        v_bar = 0.6
+        v_bar = 0.2
         if abs(phi) > 1:
             v_bar = 0.2
         elif abs(phi) > 0.6:
-            v_bar = 0.35
+            v_bar = 0.2
 
         # PD Controller from class
         k_phi = -2
         k_d = -k_phi ** 2/(4*v_bar)
-        om_com = k_d*(self.x[0]) + k_phi*(self.x[1]) - 0*v_bar/self.wheelSpan*self.x_hat[2]
+        om_com = k_d*(self.x[0]) + k_phi*(self.x[1]) - v_bar/self.wheelSpan*self.x_hat[2]
 
         # Propagate Observer state
         A = np.array([[0,v_bar],[0,0]])
@@ -81,7 +81,8 @@ class custom_control(object):
         C_aug = np.hstack((C,np.array([[0],[0]])))
 
         x_hat_dot = np.matmul(A_aug,self.x_hat) + B_aug*om_com + np.matmul(self.K_obs,self.y - np.matmul(C_aug,self.x_hat))
-        self.x_hat = self.x_hat + dt*x_hat_dot
+        if abs(d)< 0.2 and abs(phi) < 0.3:
+            self.x_hat = self.x_hat + dt*x_hat_dot
 
 
 
@@ -103,9 +104,9 @@ class custom_control(object):
         #print(self.x)
         #print(self.fsm_state)
         #print(self.errorInt)
-        print("Angular Velocity: %.2f" % u," d: %.2f" % d, " phi: %.2f" % phi," v_bar: %.2f" % v_bar) 
-        print(self.x_hat)
-        print(self.x_hat[2])
+        #print("Angular Velocity: %.2f" % u," d: %.2f" % d, " phi: %.2f" % phi," v_bar: %.2f" % v_bar) 
+        print("Estimated Trim: %.2f" % self.x_hat[2]," Actual Trim: %.2f" % self.k_trim_actual," d: %.2f" % d, " phi: %.2f" % phi) 
+       # print(self.x_hat)
 
     # ##########################################################################
     # ######################## HOUSEKEEPING FUNCTIONS ######################## #
