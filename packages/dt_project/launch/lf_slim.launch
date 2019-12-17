@@ -79,7 +79,7 @@
         </group>
 
 	    <group if="$(arg visualization)">
-          <remap from="duckiebot_visualizer/segment_list" to="ground_projection/lineseglist_out"/>
+          <remap from="duckiebot_visualizer/segment_list" to="lane_filter_node/seglist_filtered"/>
           <include file="$(find duckiebot_visualizer)/launch/duckiebot_visualizer.launch">
             <arg name="veh" value="$(arg veh)" />
           </include>
@@ -114,7 +114,7 @@
         <!-- PROJECT lane_estimation_node -->
         <!-- %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% -->
         <group if="$(arg gp_estimator_on)">
-            <remap from="dt_project_estimator_node/segment_list" to="ground_projection/lineseglist_out"/>
+            <remap from="dt_project_estimator_node/segment_list" to="lane_filter_node/seglist_filtered"/>
             <remap from="dt_project_estimator_node/car_cmd" to="/$(arg veh)/car_cmd"/>
             <remap from="dt_project_estimator_node/fsm_mode" to="fsm_node/mode"/>
             <include file="$(find dt_project_estimator)/launch/dt_project_estimator_node.launch">

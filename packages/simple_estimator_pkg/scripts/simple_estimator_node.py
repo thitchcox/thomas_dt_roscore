@@ -93,7 +93,7 @@ class simple_estimator(object):
         nWhite = whitePointsArray.shape[0]
         nYellow = yellowPointsArray.shape[0]
         
-
+        print(whitePointsArray)
         # ###### REMOVE WHITE POINTS OF LEFT LANE ######
         if nYellow >= 2: # Need minimum of two points to define a line.
             self.ransacY.fit(np.reshape(yellowPointsArray[:,0],(-1,1)), np.array(np.reshape(yellowPointsArray[:,1],(-1,1))))
